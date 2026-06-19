@@ -65,4 +65,14 @@ describe("matchService", () => {
     });
     expect(freshMatches[0].notes).toEqual(["加拿大近期攻防均衡", "盘口变化平稳"]);
   });
+
+  it("does not share nested form entries between matches in one response", async () => {
+    const matches = await getTodayMatches();
+    const canada = matches[0];
+    const switzerland = matches[1];
+
+    canada.homeTeam.recentForm[0].goalsFor = 99;
+
+    expect(switzerland.homeTeam.recentForm[0].goalsFor).toBe(2);
+  });
 });
