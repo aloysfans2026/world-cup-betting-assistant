@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { todayMatches } from "../fixtures/worldCupMatches";
 import { calculateMatchScore, impliedProbability } from "./scoring";
-import type { Match } from "./types";
+import type { Match, Odds } from "./types";
+
+// @ts-expect-error "无推荐" is score output only, not an odds input direction.
+const cannotUseNoRecommendationAsOddsDirection: Odds["recommendedDirection"] = "无推荐";
 
 describe("scoring", () => {
   it("converts decimal odds to implied probability", () => {
@@ -111,6 +114,7 @@ describe("scoring", () => {
     expect(score.warnings).toContain("盘口数据缺失");
     expect(score.risk).toBe("高");
     expect(score.confidence).toBeLessThanOrEqual(50);
+    expect(score.modelProbability).toBe(0);
     expect(score.reasons).not.toContain("球队实力和近期状态都支持该方向");
     expect(score.dataCompleteness).toBe(80);
   });
@@ -164,10 +168,13 @@ describe("scoring", () => {
     };
     const score = calculateMatchScore(matchWithInvalidOdds);
 
+    expect(score.direction).toBe("无推荐");
     expect(score.impliedProbability).toBe(0);
+    expect(score.modelProbability).toBe(0);
     expect(score.warnings).toContain("赔率数据异常");
     expect(score.warnings).not.toContain("赔率过低，收益不足");
     expect(score.risk).toBe("高");
     expect(score.confidence).toBeLessThanOrEqual(50);
+    expect(score.reasons).not.toContain("球队实力和近期状态都支持该方向");
   });
 });

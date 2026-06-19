@@ -1,4 +1,4 @@
-import type { BetDirection, Match, MatchScore, RiskLevel, Team, TeamFormMatch } from "./types";
+import type { Match, MatchScore, RiskLevel, ScoreDirection, Team, TeamFormMatch } from "./types";
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
 const EXPECTED_RECENT_FORM_MATCHES = 5;
@@ -82,7 +82,7 @@ function riskFor(match: Match, total: number): RiskLevel {
   return "低";
 }
 
-function perspectiveFor(direction: BetDirection): ScoringPerspective {
+function perspectiveFor(direction: ScoreDirection): ScoringPerspective {
   if (direction === "客胜" || direction === "让负") return "away";
   if (direction === "平" || direction === "让平" || direction === "无推荐") return "draw";
   return "home";
@@ -121,13 +121,13 @@ function confidenceFor(total: number, risk: RiskLevel, hasReliableOdds: boolean)
 
 export function calculateMatchScore(match: Match): MatchScore {
   const odds = match.odds;
-  const direction = odds?.recommendedDirection ?? "无推荐";
+  const invalidOdds = hasInvalidOdds(match);
+  const direction: ScoreDirection = odds && !invalidOdds ? odds.recommendedDirection : "无推荐";
   const perspective = perspectiveFor(direction);
   const team = perspective === "away" ? match.awayTeam : match.homeTeam;
   const opponent = perspective === "away" ? match.homeTeam : match.awayTeam;
   const incompleteRecentForm = hasIncompleteRecentForm(match);
   const missingRecentForm = hasMissingRecentForm(match);
-  const invalidOdds = hasInvalidOdds(match);
   const hasReliableOdds = Boolean(odds && !invalidOdds);
   const neutralEvidence = perspective === "draw";
   const strengthRaw = neutralEvidence ? 50 : rankStrength(team.fifaRank, opponent.fifaRank);
@@ -156,7 +156,7 @@ export function calculateMatchScore(match: Match): MatchScore {
   );
   const total = clamp(Math.round((weightedScore / 75) * 100));
   const implied = odds ? impliedProbability(odds.recommendedOdds) : 0;
-  const modelProbability = clamp(Math.round(total * 0.78 + 18));
+  const modelProbability = hasReliableOdds ? clamp(Math.round(total * 0.78 + 18)) : 0;
   const risk = riskFor(match, total);
   const warnings: string[] = [];
   const reasons: string[] = [];

@@ -8,8 +8,9 @@ export type BetDirection =
   | "客胜"
   | "让胜"
   | "让平"
-  | "让负"
-  | "无推荐";
+  | "让负";
+
+export type ScoreDirection = BetDirection | "无推荐";
 
 export type RecommendationKind = "稳胆" | "价值" | "避坑";
 
@@ -64,7 +65,7 @@ export interface ScoreBreakdown {
 
 export interface MatchScore {
   matchId: string;
-  direction: BetDirection;
+  direction: ScoreDirection;
   total: number;
   confidence: number;
   modelProbability: number;
