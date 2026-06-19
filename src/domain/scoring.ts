@@ -3,7 +3,7 @@ import type { BetDirection, Match, MatchScore, RiskLevel, Team, TeamFormMatch } 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
 const EXPECTED_RECENT_FORM_MATCHES = 5;
 
-type ScoringPerspective = "home" | "away";
+type ScoringPerspective = "home" | "away" | "draw";
 
 export function impliedProbability(decimalOdds: number): number {
   if (!Number.isFinite(decimalOdds) || decimalOdds <= 0) return 0;
@@ -54,6 +54,7 @@ function defenseScore(team: Team, opponent: Team): number {
 
 function headToHeadScore(match: Match, perspective: ScoringPerspective): number {
   if (match.recentHeadToHead.length === 0) return 50;
+  if (perspective === "draw") return 50;
 
   const goalDiff = match.recentHeadToHead.reduce(
     (sum, item) =>
@@ -83,6 +84,7 @@ function riskFor(match: Match, total: number): RiskLevel {
 
 function perspectiveFor(direction: BetDirection): ScoringPerspective {
   if (direction === "客胜" || direction === "让负") return "away";
+  if (direction === "平" || direction === "让平" || direction === "无推荐") return "draw";
   return "home";
 }
 
@@ -119,17 +121,19 @@ function confidenceFor(total: number, risk: RiskLevel, hasReliableOdds: boolean)
 
 export function calculateMatchScore(match: Match): MatchScore {
   const odds = match.odds;
-  const direction = odds?.recommendedDirection ?? "主胜";
+  const direction = odds?.recommendedDirection ?? "无推荐";
   const perspective = perspectiveFor(direction);
-  const team = perspective === "home" ? match.homeTeam : match.awayTeam;
-  const opponent = perspective === "home" ? match.awayTeam : match.homeTeam;
+  const team = perspective === "away" ? match.awayTeam : match.homeTeam;
+  const opponent = perspective === "away" ? match.homeTeam : match.awayTeam;
   const incompleteRecentForm = hasIncompleteRecentForm(match);
   const missingRecentForm = hasMissingRecentForm(match);
-  const hasReliableOdds = Boolean(odds && !hasInvalidOdds(match));
-  const strengthRaw = rankStrength(team.fifaRank, opponent.fifaRank);
-  const formRaw = missingRecentForm ? 50 : clamp(50 + (formPoints(team) - formPoints(opponent)) * 0.7);
-  const attackRaw = missingRecentForm ? 50 : attackScore(team, opponent);
-  const defenseRaw = missingRecentForm ? 50 : defenseScore(team, opponent);
+  const invalidOdds = hasInvalidOdds(match);
+  const hasReliableOdds = Boolean(odds && !invalidOdds);
+  const neutralEvidence = perspective === "draw";
+  const strengthRaw = neutralEvidence ? 50 : rankStrength(team.fifaRank, opponent.fifaRank);
+  const formRaw = neutralEvidence || missingRecentForm ? 50 : clamp(50 + (formPoints(team) - formPoints(opponent)) * 0.7);
+  const attackRaw = neutralEvidence || missingRecentForm ? 50 : attackScore(team, opponent);
+  const defenseRaw = neutralEvidence || missingRecentForm ? 50 : defenseScore(team, opponent);
   const headToHeadRaw = headToHeadScore(match, perspective);
   const marketRaw = marketScore(match);
 
@@ -163,8 +167,8 @@ export function calculateMatchScore(match: Match): MatchScore {
   if (attackRaw >= 55) reasons.push("近期进攻表现更稳定");
   if (defenseRaw >= 55) reasons.push("防守端失球控制更好");
   if (!odds) warnings.push("盘口数据缺失");
-  if (odds && odds.recommendedOdds < 1.2) warnings.push("赔率过低，收益不足");
-  if (odds && isInvalidRecommendedOdds(odds.recommendedOdds)) warnings.push("赔率数据异常");
+  if (odds && !invalidOdds && odds.recommendedOdds < 1.2) warnings.push("赔率过低，收益不足");
+  if (invalidOdds) warnings.push("赔率数据异常");
   if (match.recentHeadToHead.length === 0) warnings.push("历史交锋数据缺失");
   if (incompleteRecentForm) warnings.push("近期状态数据不足");
   if (odds?.marketMovement === "异常") warnings.push("盘口变化异常");

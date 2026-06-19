@@ -107,10 +107,48 @@ describe("scoring", () => {
     const matchWithoutOdds: Match = { ...match, odds: undefined };
     const score = calculateMatchScore(matchWithoutOdds);
 
+    expect(score.direction).toBe("无推荐");
     expect(score.warnings).toContain("盘口数据缺失");
     expect(score.risk).toBe("高");
     expect(score.confidence).toBeLessThanOrEqual(50);
+    expect(score.reasons).not.toContain("球队实力和近期状态都支持该方向");
     expect(score.dataCompleteness).toBe(80);
+  });
+
+  it("keeps draw recommendations neutral instead of home-favored", () => {
+    const match = todayMatches.find((item) => item.id === "canada-morocco");
+    if (!match?.odds) throw new Error("Fixture missing");
+
+    const drawMatch: Match = {
+      ...match,
+      odds: {
+        ...match.odds,
+        recommendedDirection: "平",
+      },
+    };
+    const score = calculateMatchScore(drawMatch);
+
+    expect(score.direction).toBe("平");
+    expect(score.breakdown.strength).toBeLessThanOrEqual(18);
+    expect(score.reasons).not.toContain("球队实力和近期状态都支持该方向");
+  });
+
+  it("keeps handicap draw recommendations neutral instead of home-favored", () => {
+    const match = todayMatches.find((item) => item.id === "canada-morocco");
+    if (!match?.odds) throw new Error("Fixture missing");
+
+    const handicapDrawMatch: Match = {
+      ...match,
+      odds: {
+        ...match.odds,
+        recommendedDirection: "让平",
+      },
+    };
+    const score = calculateMatchScore(handicapDrawMatch);
+
+    expect(score.direction).toBe("让平");
+    expect(score.breakdown.strength).toBeLessThanOrEqual(18);
+    expect(score.reasons).not.toContain("球队实力和近期状态都支持该方向");
   });
 
   it("treats invalid recommended odds as high-risk market data", () => {
@@ -121,13 +159,14 @@ describe("scoring", () => {
       ...match,
       odds: {
         ...match.odds,
-        recommendedOdds: Number.NaN,
+        recommendedOdds: 0,
       },
     };
     const score = calculateMatchScore(matchWithInvalidOdds);
 
     expect(score.impliedProbability).toBe(0);
     expect(score.warnings).toContain("赔率数据异常");
+    expect(score.warnings).not.toContain("赔率过低，收益不足");
     expect(score.risk).toBe("高");
     expect(score.confidence).toBeLessThanOrEqual(50);
   });

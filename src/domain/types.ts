@@ -8,7 +8,8 @@ export type BetDirection =
   | "客胜"
   | "让胜"
   | "让平"
-  | "让负";
+  | "让负"
+  | "无推荐";
 
 export type RecommendationKind = "稳胆" | "价值" | "避坑";
 
