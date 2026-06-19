@@ -35,6 +35,10 @@ function goalsAgainstAverage(team: Team): number {
   return team.recentForm.reduce((sum, match) => sum + match.goalsAgainst, 0) / team.recentForm.length;
 }
 
+function isInvalidRecommendedOdds(decimalOdds: number): boolean {
+  return !Number.isFinite(decimalOdds) || decimalOdds <= 0;
+}
+
 function rankStrength(teamRank: number, opponentRank: number): number {
   const gap = opponentRank - teamRank;
   return clamp(50 + gap * 2.4);
@@ -61,6 +65,7 @@ function headToHeadScore(match: Match, perspective: ScoringPerspective): number 
 
 function marketScore(match: Match): number {
   if (!match.odds) return 45;
+  if (isInvalidRecommendedOdds(match.odds.recommendedOdds)) return 25;
 
   const implied = impliedProbability(match.odds.recommendedOdds);
   const movementBonus = match.odds.marketMovement === "稳定" ? 8 : match.odds.marketMovement === "升温" ? 4 : -10;
@@ -70,6 +75,7 @@ function marketScore(match: Match): number {
 
 function riskFor(match: Match, total: number): RiskLevel {
   if (!match.odds) return "高";
+  if (isInvalidRecommendedOdds(match.odds.recommendedOdds)) return "高";
   if (match.odds.recommendedOdds < 1.2 || match.odds.marketMovement === "异常") return "高";
   if (match.recentHeadToHead.length === 0 || total < 82) return "中";
   return "低";
@@ -87,14 +93,28 @@ function hasIncompleteRecentForm(match: Match): boolean {
   );
 }
 
+function hasMissingRecentForm(match: Match): boolean {
+  return match.homeTeam.recentForm.length === 0 || match.awayTeam.recentForm.length === 0;
+}
+
+function hasInvalidOdds(match: Match): boolean {
+  return Boolean(match.odds && isInvalidRecommendedOdds(match.odds.recommendedOdds));
+}
+
 function dataCompletenessFor(match: Match, incompleteRecentForm: boolean): number {
   let completeness = 100;
 
   if (match.recentHeadToHead.length === 0) completeness -= 10;
-  if (!match.odds) completeness -= 20;
+  if (!match.odds || hasInvalidOdds(match)) completeness -= 20;
   if (incompleteRecentForm) completeness -= 15;
 
   return clamp(completeness);
+}
+
+function confidenceFor(total: number, risk: RiskLevel, hasReliableOdds: boolean): number {
+  if (!hasReliableOdds) return Math.round(clamp(Math.min(total, 50)));
+
+  return Math.round(clamp(total - (risk === "高" ? 8 : risk === "中" ? 4 : 0)));
 }
 
 export function calculateMatchScore(match: Match): MatchScore {
@@ -104,10 +124,12 @@ export function calculateMatchScore(match: Match): MatchScore {
   const team = perspective === "home" ? match.homeTeam : match.awayTeam;
   const opponent = perspective === "home" ? match.awayTeam : match.homeTeam;
   const incompleteRecentForm = hasIncompleteRecentForm(match);
+  const missingRecentForm = hasMissingRecentForm(match);
+  const hasReliableOdds = Boolean(odds && !hasInvalidOdds(match));
   const strengthRaw = rankStrength(team.fifaRank, opponent.fifaRank);
-  const formRaw = clamp(50 + (formPoints(team) - formPoints(opponent)) * 0.7);
-  const attackRaw = attackScore(team, opponent);
-  const defenseRaw = defenseScore(team, opponent);
+  const formRaw = missingRecentForm ? 50 : clamp(50 + (formPoints(team) - formPoints(opponent)) * 0.7);
+  const attackRaw = missingRecentForm ? 50 : attackScore(team, opponent);
+  const defenseRaw = missingRecentForm ? 50 : defenseScore(team, opponent);
   const headToHeadRaw = headToHeadScore(match, perspective);
   const marketRaw = marketScore(match);
 
@@ -142,6 +164,7 @@ export function calculateMatchScore(match: Match): MatchScore {
   if (defenseRaw >= 55) reasons.push("防守端失球控制更好");
   if (!odds) warnings.push("盘口数据缺失");
   if (odds && odds.recommendedOdds < 1.2) warnings.push("赔率过低，收益不足");
+  if (odds && isInvalidRecommendedOdds(odds.recommendedOdds)) warnings.push("赔率数据异常");
   if (match.recentHeadToHead.length === 0) warnings.push("历史交锋数据缺失");
   if (incompleteRecentForm) warnings.push("近期状态数据不足");
   if (odds?.marketMovement === "异常") warnings.push("盘口变化异常");
@@ -150,7 +173,7 @@ export function calculateMatchScore(match: Match): MatchScore {
     matchId: match.id,
     direction,
     total: Math.round(total),
-    confidence: Math.round(clamp(total - (risk === "高" ? 8 : risk === "中" ? 4 : 0))),
+    confidence: confidenceFor(total, risk, hasReliableOdds),
     modelProbability,
     impliedProbability: implied,
     risk,

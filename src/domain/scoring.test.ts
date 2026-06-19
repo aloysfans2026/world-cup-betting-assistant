@@ -9,6 +9,7 @@ describe("scoring", () => {
     expect(impliedProbability(1.25)).toBe(80);
     expect(impliedProbability(0)).toBe(0);
     expect(impliedProbability(-2)).toBe(0);
+    expect(impliedProbability(Number.NaN)).toBe(0);
   });
 
   it("scores Canada vs Morocco as a low-risk high-confidence pick", () => {
@@ -86,12 +87,48 @@ describe("scoring", () => {
       },
     };
 
+    const baseline = calculateMatchScore(match);
     const score = calculateMatchScore(incompleteFormMatch);
 
     expect(Number.isFinite(score.total)).toBe(true);
     expect(Number.isFinite(score.confidence)).toBe(true);
     expect(Object.values(score.breakdown).every(Number.isFinite)).toBe(true);
     expect(score.warnings).toContain("近期状态数据不足");
+    expect(score.breakdown.attack).toBe(8);
+    expect(score.breakdown.defense).toBe(8);
+    expect(score.total).toBeLessThanOrEqual(baseline.total);
     expect(score.dataCompleteness).toBeLessThan(100);
+  });
+
+  it("keeps missing-odds matches from looking like high-confidence picks", () => {
+    const match = todayMatches.find((item) => item.id === "canada-morocco");
+    if (!match) throw new Error("Fixture missing");
+
+    const matchWithoutOdds: Match = { ...match, odds: undefined };
+    const score = calculateMatchScore(matchWithoutOdds);
+
+    expect(score.warnings).toContain("盘口数据缺失");
+    expect(score.risk).toBe("高");
+    expect(score.confidence).toBeLessThanOrEqual(50);
+    expect(score.dataCompleteness).toBe(80);
+  });
+
+  it("treats invalid recommended odds as high-risk market data", () => {
+    const match = todayMatches.find((item) => item.id === "canada-morocco");
+    if (!match?.odds) throw new Error("Fixture missing");
+
+    const matchWithInvalidOdds: Match = {
+      ...match,
+      odds: {
+        ...match.odds,
+        recommendedOdds: Number.NaN,
+      },
+    };
+    const score = calculateMatchScore(matchWithInvalidOdds);
+
+    expect(score.impliedProbability).toBe(0);
+    expect(score.warnings).toContain("赔率数据异常");
+    expect(score.risk).toBe("高");
+    expect(score.confidence).toBeLessThanOrEqual(50);
   });
 });
