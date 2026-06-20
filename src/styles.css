@@ -242,3 +242,45 @@ h1 {
     text-align: left;
   }
 }
+
+.empty-state {
+  margin: 8px 0 0;
+  color: #7a5a1f;
+  font-weight: 700;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.form-grid p {
+  border: 1px solid #e1e8dd;
+  border-radius: 8px;
+  padding: 12px;
+  background: #fbfcfa;
+}
+
+.parlay-card small {
+  display: block;
+  color: #5c6b60;
+  line-height: 1.5;
+}
+
+@media (max-width: 520px) {
+  .panel,
+  .summary-card,
+  .modal {
+    padding: 16px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .recommendation-card,
+  .parlay-card {
+    padding: 12px;
+  }
+}

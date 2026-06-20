@@ -32,4 +32,14 @@ describe("App", () => {
     expect(screen.getByText("评分拆解")).toBeInTheDocument();
     expect(screen.getByText("AI解释")).toBeInTheDocument();
   });
+
+  it("keeps risk copy visible for users before and after analysis", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(screen.getByText("辅助决策，不保证结果，不自动下注。")).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: "开始分析" }));
+    expect(screen.getByText("辅助决策，不保证结果，不自动下注。")).toBeInTheDocument();
+    expect(screen.getByText(/示例投入仅用于演示风险分层/)).toBeInTheDocument();
+  });
 });
