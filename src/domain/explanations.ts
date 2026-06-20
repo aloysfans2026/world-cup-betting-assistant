@@ -8,7 +8,12 @@ export function explainRecommendation(recommendation: Recommendation): string {
   if (kind === "避坑") {
     const hasLowOddsEvidence =
       score.warnings.some((warning) => warning.includes("赔率过低")) ||
-      Boolean(match.odds && match.odds.recommendedOdds < 1.2);
+      Boolean(
+        match.odds &&
+          Number.isFinite(match.odds.recommendedOdds) &&
+          match.odds.recommendedOdds > 1 &&
+          match.odds.recommendedOdds < 1.2,
+      );
     const riskExplanation = hasLowOddsEvidence
       ? `看起来方向清楚，但${warnings}。尤其是赔率过低时，即使命中收益也不足。`
       : `当前主要问题是${warnings}，风险和收益不匹配。`;

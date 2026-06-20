@@ -76,6 +76,29 @@ describe("explanations", () => {
     expect(text).not.toContain("赔率过低");
   });
 
+  it("does not mention low odds for invalid odds data", () => {
+    const base = makeRecommendation();
+    const recommendation = makeRecommendation({
+      kind: "避坑",
+      match: {
+        ...base.match,
+        odds: {
+          ...base.match.odds!,
+          recommendedOdds: 1,
+        },
+      },
+      score: {
+        ...base.score,
+        warnings: ["赔率数据异常"],
+      },
+    });
+
+    const text = explainRecommendation(recommendation);
+
+    expect(text).toContain("赔率数据异常");
+    expect(text).not.toContain("赔率过低");
+  });
+
   it("uses fallback reasons and warnings when score details are empty", () => {
     const recommendation = makeRecommendation({
       score: {
