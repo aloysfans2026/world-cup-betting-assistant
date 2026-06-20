@@ -51,19 +51,22 @@ function buildSafePicks(scoredMatches: ScoredMatch[]): Recommendation[] {
     );
 }
 
-function buildValuePicks(scoredMatches: ScoredMatch[]): Recommendation[] {
-  const actionable = scoredMatches.filter(isActionable);
-  const positiveEdge = actionable.filter((item) => modelEdge(item.score) > 0);
-  const candidates = positiveEdge.length >= 3 ? positiveEdge : actionable;
+function buildValuePicks(scoredMatches: ScoredMatch[], safePicks: Recommendation[]): Recommendation[] {
+  const safeMatchIds = new Set(safePicks.map((pick) => pick.match.id));
+  const candidates = scoredMatches.filter((item) => isActionable(item) && item.score.risk !== "高");
 
-  return stableBy(
-    candidates,
-    (left, right) =>
+  return stableBy(candidates, (left, right) => {
+    const leftIsSafe = safeMatchIds.has(left.match.id) ? 1 : 0;
+    const rightIsSafe = safeMatchIds.has(right.match.id) ? 1 : 0;
+
+    return (
+      leftIsSafe - rightIsSafe ||
       modelEdge(right.score) - modelEdge(left.score) ||
       right.score.confidence - left.score.confidence ||
       riskRank[left.score.risk] - riskRank[right.score.risk] ||
-      left.index - right.index,
-  )
+      left.index - right.index
+    );
+  })
     .slice(0, 3)
     .map((item) =>
       toRecommendation(
@@ -107,21 +110,6 @@ function uniquePicks(picks: Recommendation[]): Recommendation[] {
   });
 }
 
-function buildParlayPool(safePicks: Recommendation[], valuePicks: Recommendation[], scoredMatches: ScoredMatch[]): Recommendation[] {
-  const fallbackPicks = stableBy(
-    scoredMatches.filter((item) => isActionable(item) && item.score.risk !== "高"),
-    (left, right) =>
-      riskRank[left.score.risk] - riskRank[right.score.risk] ||
-      right.score.confidence - left.score.confidence ||
-      modelEdge(right.score) - modelEdge(left.score) ||
-      left.index - right.index,
-  ).map((item) =>
-    toRecommendation(item, item.score.risk === "低" ? "稳胆" : "价值", "可作为串关补充候选，需控制投入。"),
-  );
-
-  return uniquePicks([...safePicks, ...valuePicks, ...fallbackPicks]);
-}
-
 function buildPlan(
   id: ParlayPlan["id"],
   label: ParlayPlan["label"],
@@ -141,12 +129,8 @@ function buildPlan(
   };
 }
 
-function buildParlayPlans(
-  safePicks: Recommendation[],
-  valuePicks: Recommendation[],
-  scoredMatches: ScoredMatch[],
-): ParlayPlan[] {
-  const pool = buildParlayPool(safePicks, valuePicks, scoredMatches);
+function buildParlayPlans(safePicks: Recommendation[], valuePicks: Recommendation[]): ParlayPlan[] {
+  const pool = uniquePicks([...safePicks, ...valuePicks]);
   const planSpecs = [
     { id: "conservative", label: "保守方案", type: "2串1", sampleStake: 20, risk: "低", pickCount: 2 },
     { id: "balanced", label: "平衡方案", type: "3串1", sampleStake: 20, risk: "中", pickCount: 3 },
@@ -165,14 +149,14 @@ export function buildAnalysis(matches: Match[]): AnalysisResult {
     index,
   }));
   const safePicks = buildSafePicks(scoredMatches);
-  const valuePicks = buildValuePicks(scoredMatches);
+  const valuePicks = buildValuePicks(scoredMatches, safePicks);
   const trapMatches = buildTrapMatches(scoredMatches);
 
   return {
     safePicks,
     valuePicks,
     trapMatches,
-    parlayPlans: buildParlayPlans(safePicks, valuePicks, scoredMatches),
+    parlayPlans: buildParlayPlans(safePicks, valuePicks),
     summary: trapMatches.length > 0 ? "建议小额参与，避开超低赔率场。" : "今日可以关注低风险组合，仍需控制投入。",
   };
 }

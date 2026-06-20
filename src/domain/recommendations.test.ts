@@ -43,6 +43,14 @@ describe("recommendations", () => {
     });
   });
 
+  it("only uses visible safe or value recommendations in parlay plans", () => {
+    const analysis = buildAnalysis(todayMatches);
+    const visibleMatchIds = new Set([...analysis.safePicks, ...analysis.valuePicks].map((pick) => pick.match.id));
+    const parlayMatchIds = analysis.parlayPlans.flatMap((plan) => plan.picks.map((pick) => pick.match.id));
+
+    expect(parlayMatchIds.every((id) => visibleMatchIds.has(id))).toBe(true);
+  });
+
   it("excludes no-pick scores from safe, value, and parlay recommendations", () => {
     const matchesWithInvalidOdds = todayMatches.map((match, index) => {
       if (index === 0) return { ...match, odds: undefined };
