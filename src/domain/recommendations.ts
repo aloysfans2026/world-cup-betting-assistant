@@ -107,6 +107,21 @@ function uniquePicks(picks: Recommendation[]): Recommendation[] {
   });
 }
 
+function buildParlayPool(safePicks: Recommendation[], valuePicks: Recommendation[], scoredMatches: ScoredMatch[]): Recommendation[] {
+  const fallbackPicks = stableBy(
+    scoredMatches.filter((item) => isActionable(item) && item.score.risk !== "高"),
+    (left, right) =>
+      riskRank[left.score.risk] - riskRank[right.score.risk] ||
+      right.score.confidence - left.score.confidence ||
+      modelEdge(right.score) - modelEdge(left.score) ||
+      left.index - right.index,
+  ).map((item) =>
+    toRecommendation(item, item.score.risk === "低" ? "稳胆" : "价值", "可作为串关补充候选，需控制投入。"),
+  );
+
+  return uniquePicks([...safePicks, ...valuePicks, ...fallbackPicks]);
+}
+
 function buildPlan(
   id: ParlayPlan["id"],
   label: ParlayPlan["label"],
@@ -126,14 +141,21 @@ function buildPlan(
   };
 }
 
-function buildParlayPlans(safePicks: Recommendation[], valuePicks: Recommendation[]): ParlayPlan[] {
-  const pool = uniquePicks([...safePicks, ...valuePicks]);
+function buildParlayPlans(
+  safePicks: Recommendation[],
+  valuePicks: Recommendation[],
+  scoredMatches: ScoredMatch[],
+): ParlayPlan[] {
+  const pool = buildParlayPool(safePicks, valuePicks, scoredMatches);
+  const planSpecs = [
+    { id: "conservative", label: "保守方案", type: "2串1", sampleStake: 20, risk: "低", pickCount: 2 },
+    { id: "balanced", label: "平衡方案", type: "3串1", sampleStake: 20, risk: "中", pickCount: 3 },
+    { id: "upside", label: "冲高方案", type: "4串1", sampleStake: 10, risk: "高", pickCount: 4 },
+  ] as const;
 
-  return [
-    buildPlan("conservative", "保守方案", "2串1", 20, "低", pool, 2),
-    buildPlan("balanced", "平衡方案", "3串1", 20, "中", pool, 3),
-    buildPlan("upside", "冲高方案", "4串1", 10, "高", pool, 4),
-  ];
+  return planSpecs
+    .filter((plan) => pool.length >= plan.pickCount)
+    .map((plan) => buildPlan(plan.id, plan.label, plan.type, plan.sampleStake, plan.risk, pool, plan.pickCount));
 }
 
 export function buildAnalysis(matches: Match[]): AnalysisResult {
@@ -150,7 +172,7 @@ export function buildAnalysis(matches: Match[]): AnalysisResult {
     safePicks,
     valuePicks,
     trapMatches,
-    parlayPlans: buildParlayPlans(safePicks, valuePicks),
+    parlayPlans: buildParlayPlans(safePicks, valuePicks, scoredMatches),
     summary: trapMatches.length > 0 ? "建议小额参与，避开超低赔率场。" : "今日可以关注低风险组合，仍需控制投入。",
   };
 }

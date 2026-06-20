@@ -3,6 +3,9 @@ import { todayMatches } from "../fixtures/worldCupMatches";
 import { buildAnalysis } from "./recommendations";
 
 describe("recommendations", () => {
+  const withActionableCount = (count: number) =>
+    todayMatches.map((match, index) => (index < count ? match : { ...match, odds: undefined }));
+
   it("builds stable, value, trap, and parlay sections", () => {
     const analysis = buildAnalysis(todayMatches);
 
@@ -28,11 +31,16 @@ describe("recommendations", () => {
     expect(analysis.trapMatches.some((item) => item.match.id === "brazil-haiti")).toBe(true);
   });
 
-  it("uses fixed sample stakes for three parlay plans", () => {
+  it("uses fixed sample stakes for three parlay plans when at least four picks are available", () => {
     const analysis = buildAnalysis(todayMatches);
 
     expect(analysis.parlayPlans.map((plan) => plan.sampleStake)).toEqual([20, 20, 10]);
     expect(analysis.parlayPlans.map((plan) => plan.type)).toEqual(["2串1", "3串1", "4串1"]);
+    analysis.parlayPlans.forEach((plan) => {
+      const requiredPickCount = Number(plan.type[0]);
+
+      expect(plan.picks).toHaveLength(requiredPickCount);
+    });
   });
 
   it("excludes no-pick scores from safe, value, and parlay recommendations", () => {
@@ -54,5 +62,22 @@ describe("recommendations", () => {
     ].map((item) => item.match.id);
 
     expect(visiblePickIds.some((id) => hiddenMatchIds.has(id))).toBe(false);
+    expect(analysis.trapMatches.map((item) => item.match.id)).toEqual(expect.arrayContaining([...hiddenMatchIds]));
+  });
+
+  it.each([
+    [0, []],
+    [1, []],
+    [2, ["2串1"]],
+    [3, ["2串1", "3串1"]],
+  ] as const)("only emits available parlay plans for %i unique actionable picks", (actionableCount, expectedTypes) => {
+    const analysis = buildAnalysis(withActionableCount(actionableCount));
+
+    expect(analysis.parlayPlans.map((plan) => plan.type)).toEqual(expectedTypes);
+    analysis.parlayPlans.forEach((plan) => {
+      const requiredPickCount = Number(plan.type[0]);
+
+      expect(plan.picks).toHaveLength(requiredPickCount);
+    });
   });
 });
