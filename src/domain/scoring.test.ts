@@ -23,11 +23,21 @@ describe("scoring", () => {
     const score = calculateMatchScore(match);
 
     expect(score.direction).toBe("让胜");
-    expect(score.total).toBeGreaterThanOrEqual(85);
+    expect(score.total).toBeGreaterThanOrEqual(65);
     expect(score.confidence).toBeGreaterThanOrEqual(85);
     expect(score.risk).toBe("低");
     expect(score.breakdown.strength).toBeGreaterThan(20);
     expect(score.reasons).toContain("球队实力和近期状态都支持该方向");
+  });
+
+  it("keeps total aligned with the weighted scoring breakdown", () => {
+    const match = todayMatches.find((item) => item.id === "canada-morocco");
+    if (!match) throw new Error("Fixture missing");
+
+    const score = calculateMatchScore(match);
+    const weightedTotal = Object.values(score.breakdown).reduce((sum, value) => sum + value, 0);
+
+    expect(score.total).toBe(weightedTotal);
   });
 
   it("flags Brazil vs Haiti as high-risk despite a likely outcome", () => {

@@ -154,10 +154,11 @@ export function calculateMatchScore(match: Match): MatchScore {
       breakdown.headToHead +
       breakdown.market,
   );
-  const total = clamp(Math.round((weightedScore / 75) * 100));
+  const total = Math.round(weightedScore);
+  const confidenceBase = clamp(Math.round((weightedScore / 75) * 100));
   const implied = odds ? impliedProbability(odds.recommendedOdds) : 0;
-  const modelProbability = hasReliableOdds ? clamp(Math.round(total * 0.78 + 18)) : 0;
-  const risk = riskFor(match, total);
+  const modelProbability = hasReliableOdds ? clamp(Math.round(confidenceBase * 0.78 + 18)) : 0;
+  const risk = riskFor(match, confidenceBase);
   const warnings: string[] = [];
   const reasons: string[] = [];
 
@@ -177,7 +178,7 @@ export function calculateMatchScore(match: Match): MatchScore {
     matchId: match.id,
     direction,
     total: Math.round(total),
-    confidence: confidenceFor(total, risk, hasReliableOdds),
+    confidence: confidenceFor(confidenceBase, risk, hasReliableOdds),
     modelProbability,
     impliedProbability: implied,
     risk,
