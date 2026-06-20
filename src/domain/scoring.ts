@@ -6,7 +6,7 @@ const EXPECTED_RECENT_FORM_MATCHES = 5;
 type ScoringPerspective = "home" | "away" | "draw";
 
 export function impliedProbability(decimalOdds: number): number {
-  if (!Number.isFinite(decimalOdds) || decimalOdds <= 0) return 0;
+  if (!Number.isFinite(decimalOdds) || decimalOdds <= 1) return 0;
   return Math.round((1 / decimalOdds) * 100);
 }
 
@@ -36,7 +36,7 @@ function goalsAgainstAverage(team: Team): number {
 }
 
 function isInvalidRecommendedOdds(decimalOdds: number): boolean {
-  return !Number.isFinite(decimalOdds) || decimalOdds <= 0;
+  return !Number.isFinite(decimalOdds) || decimalOdds <= 1;
 }
 
 function rankStrength(teamRank: number, opponentRank: number): number {

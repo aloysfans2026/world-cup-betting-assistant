@@ -10,6 +10,7 @@ describe("scoring", () => {
   it("converts decimal odds to implied probability", () => {
     expect(impliedProbability(2)).toBe(50);
     expect(impliedProbability(1.25)).toBe(80);
+    expect(impliedProbability(1)).toBe(0);
     expect(impliedProbability(0)).toBe(0);
     expect(impliedProbability(-2)).toBe(0);
     expect(impliedProbability(Number.NaN)).toBe(0);
@@ -176,5 +177,26 @@ describe("scoring", () => {
     expect(score.risk).toBe("高");
     expect(score.confidence).toBeLessThanOrEqual(50);
     expect(score.reasons).not.toContain("球队实力和近期状态都支持该方向");
+  });
+
+  it("treats decimal odds at or below one as invalid", () => {
+    const match = todayMatches.find((item) => item.id === "canada-morocco");
+    if (!match?.odds) throw new Error("Fixture missing");
+
+    const matchWithInvalidOdds: Match = {
+      ...match,
+      odds: {
+        ...match.odds,
+        recommendedOdds: 0.5,
+      },
+    };
+    const score = calculateMatchScore(matchWithInvalidOdds);
+
+    expect(score.direction).toBe("无推荐");
+    expect(score.impliedProbability).toBe(0);
+    expect(score.modelProbability).toBe(0);
+    expect(score.risk).toBe("高");
+    expect(score.confidence).toBeLessThanOrEqual(50);
+    expect(score.warnings).toContain("赔率数据异常");
   });
 });
