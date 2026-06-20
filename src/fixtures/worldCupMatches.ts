@@ -27,7 +27,13 @@ const form = {
 export const todayMatches: Match[] = [
   {
     id: "canada-morocco",
+    matchDate: "2026-06-20",
     kickoffTime: "20:00",
+    status: "未开始",
+    homeScore: null,
+    awayScore: null,
+    stage: "小组赛",
+    group: "A组",
     homeTeam: { id: "canada", name: "加拿大", fifaRank: 28, recentForm: [...form.strong] },
     awayTeam: { id: "morocco", name: "摩洛哥", fifaRank: 36, recentForm: [...form.mixed] },
     odds: {
@@ -44,7 +50,13 @@ export const todayMatches: Match[] = [
   },
   {
     id: "switzerland-serbia",
+    matchDate: "2026-06-20",
     kickoffTime: "23:00",
+    status: "未开始",
+    homeScore: null,
+    awayScore: null,
+    stage: "小组赛",
+    group: "A组",
     homeTeam: { id: "switzerland", name: "瑞士", fifaRank: 19, recentForm: [...form.strong] },
     awayTeam: { id: "serbia", name: "塞尔维亚", fifaRank: 32, recentForm: [...form.mixed] },
     odds: {
@@ -61,7 +73,13 @@ export const todayMatches: Match[] = [
   },
   {
     id: "mexico-poland",
+    matchDate: "2026-06-20",
     kickoffTime: "02:00",
+    status: "未开始",
+    homeScore: null,
+    awayScore: null,
+    stage: "小组赛",
+    group: "B组",
     homeTeam: { id: "mexico", name: "墨西哥", fifaRank: 22, recentForm: [...form.mixed] },
     awayTeam: { id: "poland", name: "波兰", fifaRank: 26, recentForm: [...form.weak] },
     odds: {
@@ -78,7 +96,13 @@ export const todayMatches: Match[] = [
   },
   {
     id: "brazil-haiti",
+    matchDate: "2026-06-20",
     kickoffTime: "03:00",
+    status: "未开始",
+    homeScore: null,
+    awayScore: null,
+    stage: "小组赛",
+    group: "B组",
     homeTeam: { id: "brazil", name: "巴西", fifaRank: 3, recentForm: [...form.strong] },
     awayTeam: { id: "haiti", name: "海地", fifaRank: 89, recentForm: [...form.weak] },
     odds: {
@@ -95,7 +119,13 @@ export const todayMatches: Match[] = [
   },
   {
     id: "japan-denmark",
+    matchDate: "2026-06-20",
     kickoffTime: "18:00",
+    status: "未开始",
+    homeScore: null,
+    awayScore: null,
+    stage: "小组赛",
+    group: "C组",
     homeTeam: { id: "japan", name: "日本", fifaRank: 17, recentForm: [...form.mixed] },
     awayTeam: { id: "denmark", name: "丹麦", fifaRank: 21, recentForm: [...form.mixed] },
     odds: {
@@ -112,7 +142,13 @@ export const todayMatches: Match[] = [
   },
   {
     id: "usa-wales",
+    matchDate: "2026-06-20",
     kickoffTime: "21:00",
+    status: "未开始",
+    homeScore: null,
+    awayScore: null,
+    stage: "小组赛",
+    group: "C组",
     homeTeam: { id: "usa", name: "美国", fifaRank: 24, recentForm: [...form.mixed] },
     awayTeam: { id: "wales", name: "威尔士", fifaRank: 35, recentForm: [...form.weak] },
     odds: {

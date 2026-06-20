@@ -46,7 +46,13 @@ export interface HeadToHeadMatch {
 
 export interface Match {
   id: string;
+  matchDate: string;
   kickoffTime: string;
+  status: "未开始" | "进行中" | "已结束";
+  homeScore: number | null;
+  awayScore: number | null;
+  stage?: string;
+  group?: string;
   homeTeam: Team;
   awayTeam: Team;
   odds?: Odds;

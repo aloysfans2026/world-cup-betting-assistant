@@ -8,10 +8,17 @@
 
 ```bash
 npm install
+cp .env.example .env
 npm run dev
 ```
 
 打开终端显示的本地地址，例如 `http://localhost:5173/`。
+
+如果要加载真实世界杯赛程/赛果，请在 `.env` 中填入：
+
+```bash
+VITE_FOOTBALL_API_KEY=your_api_key_here
+```
 
 ## 验证
 
@@ -23,6 +30,8 @@ npm run build
 ## MVP 范围
 
 - 今日比赛列表
+- football-data.org 今日世界杯赛程/比分/状态
+- 手动录入主胜/平局/客胜赔率
 - 开始分析
 - 今日稳胆 TOP3
 - 今日价值投注 TOP3
@@ -35,4 +44,47 @@ npm run build
 
 ## 数据
 
-第一版使用本地示例数据，数据服务位于 `src/services/matchService.ts`。未来接入 API-Football 或 Football Data API 时，应保持 UI 继续通过服务层读取数据。
+第一版选择 [football-data.org v4](https://www.football-data.org/documentation/quickstart) 作为世界杯赛程/赛果接口。
+
+选择原因：
+
+- 提供世界杯 `WC` 赛事的比赛列表、开赛时间、状态和比分。
+- REST 接口简单，前端 MVP 容易接入。
+- 免费账号可申请 API Key，适合先验证产品流程。
+
+需要 API Key。配置方式：
+
+```bash
+cp .env.example .env
+```
+
+然后把 `.env` 中的 `VITE_FOOTBALL_API_KEY` 改成你自己的 football-data.org API Key。
+
+当前读取接口：
+
+```text
+GET https://api.football-data.org/v4/competitions/WC/matches?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD
+Header: X-Auth-Token: <VITE_FOOTBALL_API_KEY>
+```
+
+如果没有配置 API Key、网络错误、接口限流或返回格式异常，页面不会崩溃，会提示：
+
+```text
+今日赛事数据获取失败，请稍后重试。
+```
+
+同时保留本地 mock 数据作为 fallback，方便本地演示和测试。
+
+## 赔率
+
+V1 不抓取中国体育彩票赔率，也不做反爬或 OCR。
+
+每场比赛支持手动录入：
+
+- 主胜赔率
+- 平局赔率
+- 客胜赔率
+
+用户录入后点击「开始分析」，系统会把手动赔率合并进现有评分、稳胆、价值、避坑和串关逻辑。没有赔率的真实比赛可以展示胜负倾向，但不会强行生成明确投注建议，会提示「缺少赔率，暂不建议下注」。
+
+注意：Vite 前端环境变量会被打包到浏览器代码里。这个方案适合本地 MVP；如果后续上线给多人使用，应改成后端代理保存 API Key。

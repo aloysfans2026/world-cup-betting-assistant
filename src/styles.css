@@ -108,16 +108,22 @@ h1 {
   gap: 10px;
 }
 
+.match-card {
+  border: 1px solid #dde5d9;
+  border-radius: 8px;
+  background: #fbfcfa;
+  padding: 12px;
+}
+
 .match-row {
   display: grid;
   grid-template-columns: 76px 1fr minmax(140px, auto);
   gap: 12px;
   align-items: center;
   width: 100%;
-  padding: 14px;
-  border: 1px solid #dde5d9;
-  border-radius: 8px;
-  background: #fbfcfa;
+  padding: 4px 0 10px;
+  border: 0;
+  background: transparent;
   text-align: left;
   cursor: pointer;
 }
@@ -126,6 +132,48 @@ h1 {
   color: #607063;
   font-style: normal;
   text-align: right;
+}
+
+.odds-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  border-top: 1px solid #e3eadf;
+  padding-top: 10px;
+}
+
+.odds-grid label {
+  display: grid;
+  gap: 6px;
+  color: #526158;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.odds-grid input {
+  min-width: 0;
+  border: 1px solid #ccd8c8;
+  border-radius: 8px;
+  padding: 9px 10px;
+  color: #172018;
+  background: #ffffff;
+}
+
+.odds-warning {
+  margin: 8px 0 0;
+  color: #7a5a1f;
+  font-weight: 700;
+}
+
+.alert-panel {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 16px;
+  border: 1px solid #e2c782;
+  border-radius: 8px;
+  padding: 14px;
+  color: #5c4416;
+  background: #fff8e5;
 }
 
 .recommendation-grid,
@@ -240,6 +288,10 @@ h1 {
 
   .match-row em {
     text-align: left;
+  }
+
+  .odds-grid {
+    grid-template-columns: 1fr;
   }
 }
 

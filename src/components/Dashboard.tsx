@@ -1,22 +1,30 @@
 import type { AnalysisResult, Match, Recommendation } from "../domain/types";
+import type { MatchServiceIssue } from "../services/matchService";
+import type { ManualOddsByMatchId, ManualOddsInput } from "../services/oddsService";
 import { MatchList } from "./MatchList";
 import { ParlayPlans } from "./ParlayPlans";
 import { RecommendationSection } from "./RecommendationSection";
 
 export function Dashboard({
   matches,
+  dataIssue,
+  manualOdds,
   hasAnalysis,
   analysis,
   onAnalyze,
   onSelectMatch,
   onSelectRecommendation,
+  onOddsChange,
 }: {
   matches: Match[];
+  dataIssue: MatchServiceIssue | null;
+  manualOdds: ManualOddsByMatchId;
   hasAnalysis: boolean;
   analysis: AnalysisResult;
   onAnalyze: () => void;
   onSelectMatch: (match: Match) => void;
   onSelectRecommendation: (item: Recommendation) => void;
+  onOddsChange: (matchId: string, field: keyof ManualOddsInput, value: string) => void;
 }) {
   return (
     <>
@@ -32,6 +40,13 @@ export function Dashboard({
         </div>
       </section>
 
+      {dataIssue && (
+        <section className="alert-panel" role="alert">
+          <strong>{dataIssue.message}</strong>
+          <span>{dataIssue.detail}</span>
+        </section>
+      )}
+
       <section className="panel">
         <div className="section-heading">
           <div>
@@ -42,7 +57,7 @@ export function Dashboard({
             开始分析
           </button>
         </div>
-        <MatchList matches={matches} onSelect={onSelectMatch} />
+        <MatchList matches={matches} manualOdds={manualOdds} onOddsChange={onOddsChange} onSelect={onSelectMatch} />
       </section>
 
       {hasAnalysis && (

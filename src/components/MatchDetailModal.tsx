@@ -29,7 +29,8 @@ export function MatchDetailModal({
           {match.homeTeam.name} VS {match.awayTeam.name}
         </h2>
         <p>
-          {match.kickoffTime} 开赛 · 推荐方向：{score.direction}
+          {match.matchDate} {match.kickoffTime} 开赛 · {match.status} · 比分 {match.homeScore ?? "-"}:
+          {match.awayScore ?? "-"} · 推荐方向：{score.direction}
         </p>
         <div className="detail-grid">
           <div>
