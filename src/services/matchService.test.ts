@@ -129,6 +129,41 @@ describe("matchService", () => {
     );
   });
 
+  it("can route browser requests through the local dev proxy without an auth header", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          matches: [
+            {
+              id: 456,
+              utcDate: "2026-06-23T17:00:00Z",
+              status: "TIMED",
+              stage: "GROUP_STAGE",
+              group: "GROUP_K",
+              homeTeam: { id: 3, name: "Portugal", shortName: "Portugal" },
+              awayTeam: { id: 4, name: "Uzbekistan", shortName: "Uzbekistan" },
+              score: { fullTime: { home: null, away: null } },
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const result = await getTodayMatches({
+      apiBaseUrl: "/football-data",
+      date: new Date("2026-06-23T00:00:00Z"),
+      fetcher,
+    });
+
+    expect(result.source).toBe("football-data");
+    expect(result.matches[0].homeTeam.name).toBe("Portugal");
+    expect(fetcher).toHaveBeenCalledWith(
+      expect.stringContaining("/football-data/v4/competitions/WC/matches?"),
+      {},
+    );
+  });
+
   it("falls back to sample matches when the football API fails", async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response("Too many requests", { status: 429 }));
 

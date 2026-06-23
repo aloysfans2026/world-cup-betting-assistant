@@ -60,7 +60,13 @@ cp .env.example .env
 
 然后把 `.env` 中的 `VITE_FOOTBALL_API_KEY` 改成你自己的 football-data.org API Key。
 
-当前读取接口：
+本地开发模式下，页面会先请求 Vite 本地代理：
+
+```text
+GET /football-data/v4/competitions/WC/matches?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD
+```
+
+Vite 代理再把请求转发到 football-data.org，并从 `.env` 读取 API Key 后加上请求头：
 
 ```text
 GET https://api.football-data.org/v4/competitions/WC/matches?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD
@@ -87,4 +93,4 @@ V1 不抓取中国体育彩票赔率，也不做反爬或 OCR。
 
 用户录入后点击「开始分析」，系统会把手动赔率合并进现有评分、稳胆、价值、避坑和串关逻辑。没有赔率的真实比赛可以展示胜负倾向，但不会强行生成明确投注建议，会提示「缺少赔率，暂不建议下注」。
 
-注意：Vite 前端环境变量会被打包到浏览器代码里。这个方案适合本地 MVP；如果后续上线给多人使用，应改成后端代理保存 API Key。
+注意：当前本地开发已通过 Vite 代理减少浏览器端直连问题。这个方案适合本地 MVP；如果后续上线给多人使用，应改成正式后端代理保存 API Key。

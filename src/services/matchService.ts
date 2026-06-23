@@ -1,7 +1,9 @@
-import { todayMatches } from "../fixtures/worldCupMatches";
 import type { Match } from "../domain/types";
+import { todayMatches } from "../fixtures/worldCupMatches";
 
-const FOOTBALL_DATA_MATCHES_URL = "https://api.football-data.org/v4/competitions/WC/matches";
+const FOOTBALL_DATA_API_BASE_URL = "https://api.football-data.org";
+const FOOTBALL_DATA_DEV_PROXY_BASE_URL = "/football-data";
+const FOOTBALL_DATA_MATCHES_PATH = "/v4/competitions/WC/matches";
 
 export type MatchDataSource = "football-data" | "mock-fallback";
 
@@ -47,6 +49,7 @@ interface FootballDataMatchesResponse {
 }
 
 export interface GetTodayMatchesOptions {
+  apiBaseUrl?: string;
   apiKey?: string;
   date?: Date;
   fetcher?: typeof fetch;
@@ -153,13 +156,45 @@ function issueForResponse(response: Response): MatchServiceIssue {
   };
 }
 
+function shouldUseDevProxy(options: GetTodayMatchesOptions): boolean {
+  return options.apiKey === undefined && import.meta.env.DEV;
+}
+
+function apiBaseUrlFor(options: GetTodayMatchesOptions): string {
+  if (options.apiBaseUrl) return options.apiBaseUrl;
+  return shouldUseDevProxy(options) ? FOOTBALL_DATA_DEV_PROXY_BASE_URL : FOOTBALL_DATA_API_BASE_URL;
+}
+
+function matchesUrlFor(matchDate: string, apiBaseUrl: string): string {
+  const baseUrl = apiBaseUrl.replace(/\/$/, "");
+  const browserOrigin = globalThis.location?.origin ?? "http://localhost";
+  const url = new URL(`${baseUrl}${FOOTBALL_DATA_MATCHES_PATH}`, browserOrigin);
+
+  url.searchParams.set("dateFrom", matchDate);
+  url.searchParams.set("dateTo", matchDate);
+
+  return url.toString();
+}
+
+function requestOptionsFor(apiBaseUrl: string, apiKey: string): RequestInit {
+  if (apiBaseUrl.startsWith("/")) return {};
+
+  return {
+    headers: {
+      "X-Auth-Token": apiKey,
+    },
+  };
+}
+
 export async function getTodayMatches(options: GetTodayMatchesOptions = {}): Promise<MatchServiceResult> {
-  const apiKey =
-    options.apiKey ?? import.meta.env.VITE_FOOTBALL_API_KEY ?? import.meta.env.VITE_FOOTBALL_DATA_API_KEY ?? "";
   const date = options.date ?? new Date();
   const fetcher = options.fetcher ?? fetch;
+  const apiBaseUrl = apiBaseUrlFor(options);
+  const usesLocalProxy = apiBaseUrl.startsWith("/");
+  const apiKey =
+    options.apiKey ?? import.meta.env.VITE_FOOTBALL_API_KEY ?? import.meta.env.VITE_FOOTBALL_DATA_API_KEY ?? "";
 
-  if (!apiKey.trim()) {
+  if (!usesLocalProxy && !apiKey.trim()) {
     return fallback({
       kind: "missing-api-key",
       message: "今日赛事数据获取失败，请稍后重试。",
@@ -168,16 +203,10 @@ export async function getTodayMatches(options: GetTodayMatchesOptions = {}): Pro
   }
 
   const matchDate = formatDate(date);
-  const url = new URL(FOOTBALL_DATA_MATCHES_URL);
-  url.searchParams.set("dateFrom", matchDate);
-  url.searchParams.set("dateTo", matchDate);
+  const url = matchesUrlFor(matchDate, apiBaseUrl);
 
   try {
-    const response = await fetcher(url.toString(), {
-      headers: {
-        "X-Auth-Token": apiKey,
-      },
-    });
+    const response = await fetcher(url, requestOptionsFor(apiBaseUrl, apiKey));
 
     if (!response.ok) return fallback(issueForResponse(response));
 
