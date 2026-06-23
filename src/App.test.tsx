@@ -27,6 +27,15 @@ describe("App", () => {
     expect(await screen.findByText("加拿大 VS 摩洛哥")).toBeInTheDocument();
   });
 
+  it("shows an empty state when the real API returns no World Cup matches today", async () => {
+    getTodayMatchesMock.mockResolvedValue({ matches: [], source: "football-data" });
+
+    render(<App />);
+
+    expect(await screen.findByText("今日暂无世界杯赛事。")).toBeInTheDocument();
+    expect(screen.queryByText("今日赛事数据获取失败，请稍后重试。")).not.toBeInTheDocument();
+  });
+
   it("shows a clear fallback message when the match API fails", async () => {
     getTodayMatchesMock.mockResolvedValue({
       matches: todayMatches,
