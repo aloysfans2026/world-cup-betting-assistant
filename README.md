@@ -17,7 +17,7 @@ npm run dev
 如果要加载真实世界杯赛程/赛果，请在 `.env` 中填入：
 
 ```bash
-VITE_FOOTBALL_API_KEY=your_api_key_here
+FOOTBALL_API_KEY=your_api_key_here
 ```
 
 ## 验证
@@ -58,19 +58,19 @@ npm run build
 cp .env.example .env
 ```
 
-然后把 `.env` 中的 `VITE_FOOTBALL_API_KEY` 改成你自己的 football-data.org API Key。
+然后把 `.env` 中的 `FOOTBALL_API_KEY` 改成你自己的 football-data.org API Key。
 
-本地开发模式下，页面会先请求 Vite 本地代理：
+本地开发和线上部署时，页面都只请求应用自己的 API：
 
 ```text
-GET /football-data/v4/competitions/WC/matches?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD
+GET /api/matches?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD
 ```
 
-Vite 代理再把请求转发到 football-data.org，并从 `.env` 读取 API Key 后加上请求头：
+本地由 Vite 代理转发，线上由 Vercel Function 转发。两者都会从服务端环境变量读取 API Key，再请求 football-data.org：
 
 ```text
 GET https://api.football-data.org/v4/competitions/WC/matches?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD
-Header: X-Auth-Token: <VITE_FOOTBALL_API_KEY>
+Header: X-Auth-Token: <FOOTBALL_API_KEY>
 ```
 
 如果没有配置 API Key、网络错误、接口限流或返回格式异常，页面不会崩溃，会提示：
@@ -93,4 +93,4 @@ V1 不抓取中国体育彩票赔率，也不做反爬或 OCR。
 
 用户录入后点击「开始分析」，系统会把手动赔率合并进现有评分、稳胆、价值、避坑和串关逻辑。没有赔率的真实比赛可以展示胜负倾向，但不会强行生成明确投注建议，会提示「缺少赔率，暂不建议下注」。
 
-注意：当前本地开发已通过 Vite 代理减少浏览器端直连问题。这个方案适合本地 MVP；如果后续上线给多人使用，应改成正式后端代理保存 API Key。
+注意：前端不会读取或打包真实 API Key。Vite 本地代理和 Vercel Function 会在服务端读取 `FOOTBALL_API_KEY`。

@@ -4,16 +4,16 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const footballApiKey = env.VITE_FOOTBALL_API_KEY || env.VITE_FOOTBALL_DATA_API_KEY || "";
+  const footballApiKey = env.FOOTBALL_API_KEY || "";
 
   return {
     plugins: [react()],
     server: {
       proxy: {
-        "/football-data": {
+        "/api/matches": {
           target: "https://api.football-data.org",
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/football-data/, ""),
+          rewrite: (path) => path.replace(/^\/api\/matches/, "/v4/competitions/WC/matches"),
           headers: footballApiKey
             ? {
                 "X-Auth-Token": footballApiKey,

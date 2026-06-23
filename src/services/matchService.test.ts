@@ -129,7 +129,7 @@ describe("matchService", () => {
     );
   });
 
-  it("can route browser requests through the local dev proxy without an auth header", async () => {
+  it("routes browser requests through the app API without an auth header", async () => {
     const fetcher = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -151,7 +151,7 @@ describe("matchService", () => {
     );
 
     const result = await getTodayMatches({
-      apiBaseUrl: "/football-data",
+      apiBaseUrl: "/api",
       date: new Date("2026-06-23T00:00:00Z"),
       fetcher,
     });
@@ -159,7 +159,7 @@ describe("matchService", () => {
     expect(result.source).toBe("football-data");
     expect(result.matches[0].homeTeam.name).toBe("Portugal");
     expect(fetcher).toHaveBeenCalledWith(
-      expect.stringContaining("/football-data/v4/competitions/WC/matches?"),
+      expect.stringContaining("/api/matches?"),
       {},
     );
   });

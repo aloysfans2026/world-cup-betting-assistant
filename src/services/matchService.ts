@@ -2,8 +2,9 @@ import type { Match } from "../domain/types";
 import { todayMatches } from "../fixtures/worldCupMatches";
 
 const FOOTBALL_DATA_API_BASE_URL = "https://api.football-data.org";
-const FOOTBALL_DATA_DEV_PROXY_BASE_URL = "/football-data";
 const FOOTBALL_DATA_MATCHES_PATH = "/v4/competitions/WC/matches";
+const APP_API_BASE_URL = "/api";
+const APP_MATCHES_PATH = "/matches";
 
 export type MatchDataSource = "football-data" | "mock-fallback";
 
@@ -156,19 +157,20 @@ function issueForResponse(response: Response): MatchServiceIssue {
   };
 }
 
-function shouldUseDevProxy(options: GetTodayMatchesOptions): boolean {
-  return options.apiKey === undefined && import.meta.env.DEV;
+function shouldUseAppApi(options: GetTodayMatchesOptions): boolean {
+  return options.apiKey === undefined;
 }
 
 function apiBaseUrlFor(options: GetTodayMatchesOptions): string {
   if (options.apiBaseUrl) return options.apiBaseUrl;
-  return shouldUseDevProxy(options) ? FOOTBALL_DATA_DEV_PROXY_BASE_URL : FOOTBALL_DATA_API_BASE_URL;
+  return shouldUseAppApi(options) ? APP_API_BASE_URL : FOOTBALL_DATA_API_BASE_URL;
 }
 
 function matchesUrlFor(matchDate: string, apiBaseUrl: string): string {
   const baseUrl = apiBaseUrl.replace(/\/$/, "");
   const browserOrigin = globalThis.location?.origin ?? "http://localhost";
-  const url = new URL(`${baseUrl}${FOOTBALL_DATA_MATCHES_PATH}`, browserOrigin);
+  const matchesPath = apiBaseUrl.startsWith("/") ? APP_MATCHES_PATH : FOOTBALL_DATA_MATCHES_PATH;
+  const url = new URL(`${baseUrl}${matchesPath}`, browserOrigin);
 
   url.searchParams.set("dateFrom", matchDate);
   url.searchParams.set("dateTo", matchDate);
@@ -191,8 +193,7 @@ export async function getTodayMatches(options: GetTodayMatchesOptions = {}): Pro
   const fetcher = options.fetcher ?? fetch;
   const apiBaseUrl = apiBaseUrlFor(options);
   const usesLocalProxy = apiBaseUrl.startsWith("/");
-  const apiKey =
-    options.apiKey ?? import.meta.env.VITE_FOOTBALL_API_KEY ?? import.meta.env.VITE_FOOTBALL_DATA_API_KEY ?? "";
+  const apiKey = options.apiKey ?? "";
 
   if (!usesLocalProxy && !apiKey.trim()) {
     return fallback({
