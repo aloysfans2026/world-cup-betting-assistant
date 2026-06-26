@@ -46,8 +46,28 @@ function responseAdapter(response: ServerResponse): VercelResponse {
 
 function oddsApiDevPlugin(): Plugin {
   return {
-    name: "odds-api-dev",
+    name: "app-api-dev",
     configureServer(server) {
+      server.middlewares.use("/api/matches", async (request, response) => {
+        try {
+          const modulePath = new URL("./api/matches.js", import.meta.url).href;
+          const { default: handler } = (await import(modulePath)) as { default: VercelHandler };
+
+          await handler(
+            {
+              method: request.method,
+              query: queryFor(request),
+              url: request.url,
+            },
+            responseAdapter(response),
+          );
+        } catch {
+          response.statusCode = 500;
+          response.setHeader("Content-Type", "application/json; charset=utf-8");
+          response.end(JSON.stringify({ matches: [], message: "今日赛事数据获取失败，请稍后重试。" }));
+        }
+      });
+
       server.middlewares.use("/api/odds", async (request, response) => {
         try {
           const modulePath = new URL("./api/odds.js", import.meta.url).href;
@@ -72,25 +92,10 @@ function oddsApiDevPlugin(): Plugin {
 }
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), "");
-  const footballApiKey = env.FOOTBALL_API_KEY || "";
+  loadEnv(mode, process.cwd(), "");
 
   return {
     plugins: [react(), oddsApiDevPlugin()],
-    server: {
-      proxy: {
-        "/api/matches": {
-          target: "https://api.football-data.org",
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/matches/, "/v4/competitions/WC/matches"),
-          headers: footballApiKey
-            ? {
-                "X-Auth-Token": footballApiKey,
-              }
-            : {},
-        },
-      },
-    },
     test: {
       environment: "jsdom",
       globals: true,

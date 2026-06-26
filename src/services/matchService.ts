@@ -7,7 +7,7 @@ const FOOTBALL_DATA_MATCHES_PATH = "/v4/competitions/WC/matches";
 const APP_API_BASE_URL = "/api";
 const APP_MATCHES_PATH = "/matches";
 
-export type MatchDataSource = "football-data" | "mock-fallback";
+export type MatchDataSource = "football-data" | "sporttery" | "mock-fallback";
 
 export type MatchServiceIssueKind = "missing-api-key" | "network" | "api-error" | "rate-limit" | "parse";
 
@@ -48,6 +48,7 @@ interface FootballDataMatch {
 
 interface FootballDataMatchesResponse {
   matches?: FootballDataMatch[];
+  source?: MatchDataSource;
 }
 
 export interface GetTodayMatchesOptions {
@@ -61,6 +62,14 @@ function fallback(issue: MatchServiceIssue): MatchServiceResult {
   return {
     matches: todayMatches.map((match) => structuredClone(match)),
     source: "mock-fallback",
+    issue,
+  };
+}
+
+function emptyResult(issue: MatchServiceIssue): MatchServiceResult {
+  return {
+    matches: [],
+    source: "sporttery",
     issue,
   };
 }
@@ -142,6 +151,43 @@ function mapFootballDataMatch(match: FootballDataMatch): Match {
   };
 }
 
+function isAppMatch(value: unknown): value is Match {
+  const match = value as Partial<Match>;
+  return Boolean(
+    match &&
+      typeof match === "object" &&
+      typeof match.id === "string" &&
+      typeof match.matchDate === "string" &&
+      typeof match.kickoffTime === "string" &&
+      match.homeTeam &&
+      match.awayTeam,
+  );
+}
+
+function normalizeAppMatch(match: Match): Match {
+  return {
+    ...match,
+    status: match.status ?? "未开始",
+    homeScore: match.homeScore ?? null,
+    awayScore: match.awayScore ?? null,
+    homeTeam: {
+      ...match.homeTeam,
+      name: toChineseTeamName(match.homeTeam.name),
+      fifaRank: match.homeTeam.fifaRank || 99,
+      recentForm: match.homeTeam.recentForm ?? [],
+    },
+    awayTeam: {
+      ...match.awayTeam,
+      name: toChineseTeamName(match.awayTeam.name),
+      fifaRank: match.awayTeam.fifaRank || 99,
+      recentForm: match.awayTeam.recentForm ?? [],
+    },
+    recentHeadToHead: match.recentHeadToHead ?? [],
+    notes: match.notes ?? [],
+    odds: undefined,
+  };
+}
+
 function issueForResponse(response: Response): MatchServiceIssue {
   if (response.status === 429) {
     return {
@@ -210,19 +256,32 @@ export async function getTodayMatches(options: GetTodayMatchesOptions = {}): Pro
   try {
     const response = await fetcher(url, requestOptionsFor(apiBaseUrl, apiKey));
 
-    if (!response.ok) return fallback(issueForResponse(response));
+    if (!response.ok) {
+      const issue = issueForResponse(response);
+      return usesLocalProxy ? emptyResult(issue) : fallback(issue);
+    }
 
     const data = (await response.json()) as FootballDataMatchesResponse;
     if (!Array.isArray(data.matches)) {
-      return fallback({
+      const issue = {
         kind: "parse",
         message: "今日赛事数据获取失败，请稍后重试。",
         detail: "football-data.org 返回格式异常，已使用本地示例数据。",
-      });
+      } satisfies MatchServiceIssue;
+      return usesLocalProxy ? emptyResult(issue) : fallback(issue);
+    }
+
+    const rawMatches = data.matches;
+
+    if (data.source === "sporttery" || rawMatches.every(isAppMatch)) {
+      return {
+        matches: rawMatches.map((match) => normalizeAppMatch(match as unknown as Match)),
+        source: "sporttery",
+      };
     }
 
     return {
-      matches: data.matches.map(mapFootballDataMatch),
+      matches: rawMatches.map((match) => mapFootballDataMatch(match as FootballDataMatch)),
       source: "football-data",
     };
   } catch {

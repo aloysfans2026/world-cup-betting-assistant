@@ -135,16 +135,24 @@ describe("matchService", () => {
         JSON.stringify({
           matches: [
             {
-              id: 456,
-              utcDate: "2026-06-23T17:00:00Z",
-              status: "TIMED",
-              stage: "GROUP_STAGE",
-              group: "GROUP_K",
-              homeTeam: { id: 3, name: "Portugal", shortName: "Portugal" },
-              awayTeam: { id: 4, name: "Uzbekistan", shortName: "Uzbekistan" },
-              score: { fullTime: { home: null, away: null } },
+              id: "2040297",
+              sportteryMatchId: "2040297",
+              matchNo: "周五061",
+              matchNumStr: "周五061",
+              matchDate: "2026-06-27",
+              kickoffTime: "03:00",
+              status: "未开始",
+              homeScore: null,
+              awayScore: null,
+              stage: "小组赛",
+              group: "I组",
+              homeTeam: { id: "391", name: "挪威", fifaRank: 99, recentForm: [] },
+              awayTeam: { id: "375", name: "法国", fifaRank: 99, recentForm: [] },
+              recentHeadToHead: [],
+              notes: [],
             },
           ],
+          source: "sporttery",
         }),
         { status: 200 },
       ),
@@ -156,9 +164,19 @@ describe("matchService", () => {
       fetcher,
     });
 
-    expect(result.source).toBe("football-data");
-    expect(result.matches[0].homeTeam.name).toBe("葡萄牙");
-    expect(result.matches[0].awayTeam.name).toBe("乌兹别克斯坦");
+    expect(result.source).toBe("sporttery");
+    expect(result.matches[0]).toMatchObject({
+      id: "2040297",
+      sportteryMatchId: "2040297",
+      matchNo: "周五061",
+      matchNumStr: "周五061",
+      matchDate: "2026-06-27",
+      kickoffTime: "03:00",
+      stage: "小组赛",
+      group: "I组",
+      homeTeam: { name: "挪威" },
+      awayTeam: { name: "法国" },
+    });
     expect(fetcher).toHaveBeenCalledWith(
       expect.stringContaining("/api/matches?"),
       {},

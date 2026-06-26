@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import handler, { fetchFootballDataMatches } from "./matches.js";
+import handler, { fetchFootballDataMatches, parseSportteryMatches } from "./matches.js";
 
 function responseMock() {
   return {
@@ -22,6 +22,58 @@ function responseMock() {
 }
 
 describe("Vercel matches API", () => {
+  it("parses public Sporttery matches for the requested business date", () => {
+    const matches = parseSportteryMatches(
+      {
+        value: {
+          matchInfoList: [
+            {
+              businessDate: "2026-06-26",
+              subMatchList: [
+                {
+                  businessDate: "2026-06-26",
+                  matchId: 2040297,
+                  matchNumStr: "周五061",
+                  matchDate: "2026-06-27",
+                  matchTime: "03:00:00",
+                  matchStatus: "Selling",
+                  leagueAllName: "世界杯",
+                  homeRank: "[I组2]",
+                  awayRank: "[I组1]",
+                  homeTeamId: 391,
+                  awayTeamId: 375,
+                  homeTeamAllName: "挪威",
+                  awayTeamAllName: "法国",
+                  remark: "比赛将在美国举行",
+                },
+              ],
+            },
+          ],
+        },
+      },
+      "2026-06-26",
+      "2026-06-26",
+    );
+
+    expect(matches).toEqual([
+      expect.objectContaining({
+        id: "2040297",
+        sportteryMatchId: "2040297",
+        matchNo: "周五061",
+        matchNumStr: "周五061",
+        matchDate: "2026-06-27",
+        kickoffTime: "03:00",
+        status: "未开始",
+        stage: "小组赛",
+        group: "I组",
+        homeTeam: expect.objectContaining({ id: "391", name: "挪威" }),
+        awayTeam: expect.objectContaining({ id: "375", name: "法国" }),
+        homeScore: null,
+        awayScore: null,
+      }),
+    ]);
+  });
+
   it("requires a server-side football API key", async () => {
     const fetcher = vi.fn();
 
