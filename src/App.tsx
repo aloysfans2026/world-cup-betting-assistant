@@ -19,11 +19,59 @@ export interface AutoOddsStatus {
   message?: string;
 }
 
+export interface DateTab {
+  date: string;
+  label: string;
+  displayDate: string;
+}
+
 function formatLocalDate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function startOfLocalDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function addDays(date: Date, days: number): Date {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
+}
+
+function formatTabDate(date: Date): string {
+  return `${String(date.getMonth() + 1).padStart(2, "0")}月${String(date.getDate()).padStart(2, "0")}日`;
+}
+
+function labelForDate(date: Date, today: Date): string {
+  const difference = Math.round((date.getTime() - today.getTime()) / 86_400_000);
+  if (difference === -1) return "昨天";
+  if (difference === 0) return "今天";
+  if (difference === 1) return "明天";
+  return formatTabDate(date);
+}
+
+function buildDateTabs(today: Date): DateTab[] {
+  return [-3, -2, -1, 0, 1, 2, 3].map((offset) => {
+    const date = addDays(today, offset);
+    return {
+      date: formatLocalDate(date),
+      label: labelForDate(date, today),
+      displayDate: formatTabDate(date),
+    };
+  });
+}
+
+function kickoffSortValue(match: Match): string {
+  const kickoffTime = /^\d{2}:\d{2}$/.test(match.kickoffTime) ? match.kickoffTime : "99:99";
+  return `${match.matchDate} ${kickoffTime}`;
+}
+
+function sortMatchesByKickoff(matches: Match[]): Match[] {
+  return [...matches].sort((left, right) => kickoffSortValue(left).localeCompare(kickoffSortValue(right), "zh-CN"));
 }
 
 function displayTime(value: string | undefined): string {
@@ -32,18 +80,26 @@ function displayTime(value: string | undefined): string {
 }
 
 export default function App() {
+  const today = useMemo(() => startOfLocalDay(new Date()), []);
+  const dateTabs = useMemo(() => buildDateTabs(today), [today]);
+  const [selectedDate, setSelectedDate] = useState(() => formatLocalDate(today));
   const [matches, setMatches] = useState<Match[]>([]);
   const [matchIssue, setMatchIssue] = useState<MatchServiceIssue | null>(null);
   const [oddsByMatchId, setOddsByMatchId] = useState<OddsByMatchId>({});
   const [autoOddsStatus, setAutoOddsStatus] = useState<AutoOddsStatus>({ state: "idle" });
   const [hasAnalysis, setHasAnalysis] = useState(false);
-  const matchesWithOdds = useMemo(() => applyOddsToMatches(matches, oddsByMatchId), [matches, oddsByMatchId]);
+  const sortedMatches = useMemo(() => sortMatchesByKickoff(matches), [matches]);
+  const matchesWithOdds = useMemo(() => applyOddsToMatches(sortedMatches, oddsByMatchId), [oddsByMatchId, sortedMatches]);
   const analysis = useMemo(() => buildAnalysis(matchesWithOdds), [matchesWithOdds]);
 
   useEffect(() => {
     let isCurrent = true;
 
-    getTodayMatches().then((result) => {
+    setOddsByMatchId({});
+    setAutoOddsStatus({ state: "idle" });
+    setHasAnalysis(false);
+
+    getTodayMatches({ date: new Date(`${selectedDate}T00:00:00`) }).then((result) => {
       if (!isCurrent) return;
       setMatches(result.matches);
       setMatchIssue(result.issue ?? null);
@@ -52,7 +108,7 @@ export default function App() {
     return () => {
       isCurrent = false;
     };
-  }, []);
+  }, [selectedDate]);
 
   const handleAutoFetchOdds = async () => {
     if (matches.length === 0) {
@@ -60,10 +116,9 @@ export default function App() {
       return;
     }
 
-    const date = formatLocalDate(new Date());
     setAutoOddsStatus({ state: "loading", message: "正在获取今日公开赔率..." });
 
-    const result = await fetchOddsFromAppApi(date);
+    const result = await fetchOddsFromAppApi(selectedDate);
     if (!result.success || result.odds.length === 0) {
       setAutoOddsStatus({
         state: "error",
@@ -96,12 +151,15 @@ export default function App() {
     <main className="app-shell">
       <Dashboard
         matches={matchesWithOdds}
+        dateTabs={dateTabs}
         dataIssue={matchIssue}
         autoOddsStatus={autoOddsStatus}
+        selectedDate={selectedDate}
         hasAnalysis={hasAnalysis}
         analysis={analysis}
         onAnalyze={() => setHasAnalysis(true)}
         onAutoFetchOdds={handleAutoFetchOdds}
+        onDateChange={setSelectedDate}
       />
       <Disclaimer />
     </main>

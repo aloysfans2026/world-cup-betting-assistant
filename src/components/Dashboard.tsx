@@ -1,4 +1,4 @@
-import type { AutoOddsStatus } from "../App";
+import type { AutoOddsStatus, DateTab } from "../App";
 import type { AnalysisResult, Match } from "../domain/types";
 import type { MatchServiceIssue } from "../services/matchService";
 import { MatchList } from "./MatchList";
@@ -7,28 +7,49 @@ import { RecommendationSection } from "./RecommendationSection";
 
 export function Dashboard({
   matches,
+  dateTabs,
   dataIssue,
   autoOddsStatus,
+  selectedDate,
   hasAnalysis,
   analysis,
   onAnalyze,
   onAutoFetchOdds,
+  onDateChange,
 }: {
   matches: Match[];
+  dateTabs: DateTab[];
   dataIssue: MatchServiceIssue | null;
   autoOddsStatus: AutoOddsStatus;
+  selectedDate: string;
   hasAnalysis: boolean;
   analysis: AnalysisResult;
   onAnalyze: () => void;
   onAutoFetchOdds: () => void;
+  onDateChange: (date: string) => void;
 }) {
   return (
     <>
       <section className="hero">
         <div>
-          <p className="eyebrow">世界杯竞彩决策助手</p>
-          <h1>30 秒看懂今天是否值得小额参与</h1>
-          <p className="hero-copy">不是预测神器，只把比赛数据、推荐方向和风险提示放到一个清楚的决策面板里。</p>
+          <h1>世界杯竞彩决策助手</h1>
+          <p className="hero-copy">今日世界杯赛事</p>
+          <p className="current-date">{selectedDate}</p>
+          <div className="date-tabs" role="tablist" aria-label="选择比赛日期">
+            {dateTabs.map((tab) => (
+              <button
+                aria-selected={tab.date === selectedDate}
+                className={tab.date === selectedDate ? "date-tab active" : "date-tab"}
+                key={tab.date}
+                onClick={() => onDateChange(tab.date)}
+                role="tab"
+                type="button"
+              >
+                <span>{tab.label}</span>
+                <small>{tab.displayDate}</small>
+              </button>
+            ))}
+          </div>
         </div>
         <div className="summary-card">
           <span>今日结论</span>
@@ -45,7 +66,7 @@ export function Dashboard({
       <section className="panel">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">今日世界杯赛事</p>
+            <p className="eyebrow">比赛列表</p>
             <h2>{matches.length} 场比赛待分析</h2>
           </div>
           <div className="section-actions">

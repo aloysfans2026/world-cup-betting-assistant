@@ -42,14 +42,68 @@ p {
 
 h1 {
   max-width: 720px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   font-size: 42px;
   line-height: 1.12;
 }
 
 .hero-copy {
-  max-width: 680px;
+  margin-bottom: 4px;
   color: #526158;
+  font-weight: 700;
+}
+
+.current-date {
+  margin-bottom: 16px;
+  color: #172018;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.date-tabs {
+  display: flex;
+  gap: 8px;
+  max-width: min(720px, 100%);
+  overflow-x: auto;
+  padding: 2px 0 8px;
+  scrollbar-width: thin;
+}
+
+.date-tab {
+  flex: 0 0 auto;
+  min-width: 94px;
+  border: 1px solid #d9e1d5;
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: #526158;
+  background: #ffffff;
+  cursor: pointer;
+  text-align: center;
+}
+
+.date-tab span,
+.date-tab small {
+  display: block;
+}
+
+.date-tab span {
+  font-weight: 800;
+}
+
+.date-tab small {
+  margin-top: 2px;
+  color: #738074;
+  font-size: 12px;
+}
+
+.date-tab.active {
+  border-color: #236c3a;
+  color: #ffffff;
+  background: #236c3a;
+}
+
+.date-tab.active small {
+  color: #dceadc;
 }
 
 .summary-card,
@@ -96,8 +150,7 @@ h1 {
 }
 
 .primary-button,
-.secondary-button,
-.close-button {
+.secondary-button {
   border: 0;
   border-radius: 8px;
   cursor: pointer;
@@ -110,8 +163,7 @@ h1 {
   background: #236c3a;
 }
 
-.secondary-button,
-.close-button {
+.secondary-button {
   padding: 12px 18px;
   color: #236c3a;
   background: #e8f3e8;
@@ -128,28 +180,64 @@ button:disabled {
 }
 
 .match-card {
+  display: grid;
+  gap: 12px;
   border: 1px solid #dde5d9;
   border-radius: 8px;
   background: #fbfcfa;
-  padding: 12px;
+  padding: 14px;
 }
 
-.match-row {
+.match-time {
+  color: #172018;
+  font-size: 22px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.match-teams {
   display: grid;
-  grid-template-columns: 76px 1fr minmax(140px, auto);
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 14px;
   align-items: center;
-  width: 100%;
-  padding: 4px 0 10px;
-  border: 0;
-  background: transparent;
-  text-align: left;
 }
 
-.match-row em {
+.team-side {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  min-width: 0;
+}
+
+.team-flag {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.team-name {
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.versus {
+  color: #738074;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.match-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 12px;
   color: #607063;
+  font-size: 13px;
+}
+
+.match-meta em {
+  color: #236c3a;
+  font-weight: 800;
   font-style: normal;
-  text-align: right;
 }
 
 .odds-pills {
@@ -233,53 +321,6 @@ button:disabled {
   color: #526158;
 }
 
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 20px;
-  background: rgba(16, 24, 18, 0.48);
-}
-
-.modal {
-  width: min(720px, 100%);
-  max-height: calc(100vh - 40px);
-  overflow: auto;
-  border-radius: 8px;
-  background: #ffffff;
-  padding: 24px;
-}
-
-.close-button {
-  float: right;
-  padding: 8px 10px;
-  background: #edf2ea;
-}
-
-.detail-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-.detail-grid div,
-.breakdown-list li {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  border: 1px solid #e1e8dd;
-  border-radius: 8px;
-  padding: 12px;
-}
-
-.breakdown-list {
-  display: grid;
-  gap: 8px;
-  padding: 0;
-  list-style: none;
-}
-
 @media (max-width: 760px) {
   .app-shell {
     width: min(100% - 24px, 560px);
@@ -288,8 +329,7 @@ button:disabled {
 
   .hero,
   .recommendation-grid,
-  .parlay-grid,
-  .detail-grid {
+  .parlay-grid {
     grid-template-columns: 1fr;
   }
 
@@ -310,36 +350,20 @@ button:disabled {
     flex: 1;
   }
 
-  .match-row {
+  .match-teams {
     grid-template-columns: 1fr;
   }
 
-  .match-row em {
-    text-align: left;
+  .versus {
+    text-align: center;
   }
 
-  .odds-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 .empty-state {
   margin: 8px 0 0;
   color: #7a5a1f;
   font-weight: 700;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.form-grid p {
-  border: 1px solid #e1e8dd;
-  border-radius: 8px;
-  padding: 12px;
-  background: #fbfcfa;
 }
 
 .parlay-card small {
@@ -350,13 +374,8 @@ button:disabled {
 
 @media (max-width: 520px) {
   .panel,
-  .summary-card,
-  .modal {
+  .summary-card {
     padding: 16px;
-  }
-
-  .form-grid {
-    grid-template-columns: 1fr;
   }
 
   .recommendation-card,

@@ -74,7 +74,7 @@ function formatDate(date: Date): string {
 
 function formatKickoffTime(utcDate: string): string {
   const date = new Date(utcDate);
-  if (Number.isNaN(date.getTime())) return "--:--";
+  if (Number.isNaN(date.getTime())) return "时间待定";
 
   return new Intl.DateTimeFormat("zh-CN", {
     hour: "2-digit",
