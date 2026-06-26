@@ -1,30 +1,50 @@
 import type { AnalysisResult, Match, Recommendation } from "../domain/types";
 import type { MatchServiceIssue } from "../services/matchService";
+import type { RecognizedOddsRow } from "../services/ocrOddsService";
 import type { ManualOddsByMatchId, ManualOddsInput } from "../services/oddsService";
 import { MatchList } from "./MatchList";
 import { ParlayPlans } from "./ParlayPlans";
 import { RecommendationSection } from "./RecommendationSection";
+import { ScreenshotOddsUploader } from "./ScreenshotOddsUploader";
 
 export function Dashboard({
   matches,
+  rawMatches,
   dataIssue,
   manualOdds,
+  recognizedOddsRows,
+  ocrMessage,
+  isRecognizingOdds,
   hasAnalysis,
   analysis,
   onAnalyze,
   onSelectMatch,
   onSelectRecommendation,
+  onApplyRecognizedOdds,
+  onClearRecognizedOdds,
+  onOcrMessageChange,
   onOddsChange,
+  onRecognizedOddsRowsChange,
+  onRecognizingOddsChange,
 }: {
   matches: Match[];
+  rawMatches: Match[];
   dataIssue: MatchServiceIssue | null;
   manualOdds: ManualOddsByMatchId;
+  recognizedOddsRows: RecognizedOddsRow[];
+  ocrMessage: string;
+  isRecognizingOdds: boolean;
   hasAnalysis: boolean;
   analysis: AnalysisResult;
   onAnalyze: () => void;
   onSelectMatch: (match: Match) => void;
   onSelectRecommendation: (item: Recommendation) => void;
+  onApplyRecognizedOdds: () => void;
+  onClearRecognizedOdds: () => void;
+  onOcrMessageChange: (message: string) => void;
   onOddsChange: (matchId: string, field: keyof ManualOddsInput, value: string) => void;
+  onRecognizedOddsRowsChange: (rows: RecognizedOddsRow[]) => void;
+  onRecognizingOddsChange: (isRecognizing: boolean) => void;
 }) {
   return (
     <>
@@ -46,6 +66,18 @@ export function Dashboard({
           <span>{dataIssue.detail}</span>
         </section>
       )}
+
+      <ScreenshotOddsUploader
+        matches={rawMatches}
+        rows={recognizedOddsRows}
+        isRecognizing={isRecognizingOdds}
+        message={ocrMessage}
+        onApply={onApplyRecognizedOdds}
+        onClear={onClearRecognizedOdds}
+        onMessage={onOcrMessageChange}
+        onRowsChange={onRecognizedOddsRowsChange}
+        onRecognizingChange={onRecognizingOddsChange}
+      />
 
       <section className="panel">
         <div className="section-heading">

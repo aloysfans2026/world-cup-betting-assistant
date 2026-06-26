@@ -69,6 +69,9 @@ export function MatchList({
             </label>
           </div>
           {!match.odds && <p className="odds-warning">缺少赔率，暂不建议下注</p>}
+          {manualOdds[match.id]?.source === "ocr" && (
+            <p className="odds-source">赔率来自截图识别，请人工核对</p>
+          )}
         </article>
       ))}
     </div>

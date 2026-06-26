@@ -4,6 +4,7 @@ export interface ManualOddsInput {
   homeWin?: string;
   draw?: string;
   awayWin?: string;
+  source?: "manual" | "ocr";
 }
 
 export type ManualOddsByMatchId = Record<string, ManualOddsInput>;

@@ -9,8 +9,16 @@ const { getTodayMatchesMock } = vi.hoisted(() => ({
   getTodayMatchesMock: vi.fn(),
 }));
 
+const { recognizeImageOddsMock } = vi.hoisted(() => ({
+  recognizeImageOddsMock: vi.fn(),
+}));
+
 vi.mock("./services/matchService", () => ({
   getTodayMatches: getTodayMatchesMock,
+}));
+
+vi.mock("./services/browserOcrService", () => ({
+  recognizeImageOdds: recognizeImageOddsMock,
 }));
 
 describe("App", () => {
@@ -18,6 +26,8 @@ describe("App", () => {
     window.localStorage.clear();
     getTodayMatchesMock.mockReset();
     getTodayMatchesMock.mockResolvedValue({ matches: todayMatches, source: "mock-fallback" });
+    recognizeImageOddsMock.mockReset();
+    recognizeImageOddsMock.mockResolvedValue("周二001 加拿大 摩洛哥 1.82 3.20 4.10");
   });
 
   it("loads matches through the match service boundary", async () => {
@@ -129,5 +139,44 @@ describe("App", () => {
 
     expect(screen.getAllByText("推荐结果不足，请谨慎参考。").length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText("加拿大主胜")).not.toBeInTheDocument();
+  });
+
+  it("lets users upload an odds screenshot, review OCR results, and apply odds to matches", async () => {
+    const user = userEvent.setup();
+    const [matchWithoutOdds] = todayMatches.map((match) => ({ ...match, odds: undefined }));
+    getTodayMatchesMock.mockResolvedValue({ matches: [matchWithoutOdds], source: "football-data" });
+    render(<App />);
+
+    await screen.findByText("加拿大 VS 摩洛哥");
+    const image = new File(["fake image"], "odds.png", { type: "image/png" });
+    await user.upload(screen.getByLabelText("上传赔率截图"), image);
+
+    expect(await screen.findByDisplayValue("加拿大")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("摩洛哥")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("1.82")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("3.20")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("4.10")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "应用到今日比赛" }));
+
+    expect(screen.getByLabelText("加拿大主胜赔率")).toHaveValue(1.82);
+    expect(screen.getByText("赔率来自截图识别，请人工核对")).toBeInTheDocument();
+    expect(screen.queryByText("缺少赔率，暂不建议下注")).not.toBeInTheDocument();
+  });
+
+  it("keeps manual odds entry available when screenshot OCR fails", async () => {
+    const user = userEvent.setup();
+    recognizeImageOddsMock.mockRejectedValue(new Error("ocr failed"));
+    const [matchWithoutOdds] = todayMatches.map((match) => ({ ...match, odds: undefined }));
+    getTodayMatchesMock.mockResolvedValue({ matches: [matchWithoutOdds], source: "football-data" });
+    render(<App />);
+
+    await screen.findByText("加拿大 VS 摩洛哥");
+    await user.upload(screen.getByLabelText("上传赔率截图"), new File(["fake image"], "odds.jpg", { type: "image/jpeg" }));
+
+    expect(await screen.findByText("截图识别失败，可继续手动录入赔率。")).toBeInTheDocument();
+    await user.type(screen.getByLabelText("加拿大主胜赔率"), "1.90");
+
+    expect(screen.getByLabelText("加拿大主胜赔率")).toHaveValue(1.9);
   });
 });

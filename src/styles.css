@@ -89,8 +89,10 @@ h1 {
 }
 
 .primary-button,
+.secondary-button,
 .recommendation-card button,
-.close-button {
+.close-button,
+.upload-button {
   border: 0;
   border-radius: 8px;
   cursor: pointer;
@@ -101,6 +103,21 @@ h1 {
   padding: 12px 18px;
   color: #ffffff;
   background: #236c3a;
+}
+
+.secondary-button,
+.upload-button {
+  padding: 12px 18px;
+  color: #236c3a;
+  background: #e8f3e8;
+}
+
+.upload-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
 }
 
 .match-list {
@@ -165,6 +182,12 @@ h1 {
   font-weight: 700;
 }
 
+.odds-source {
+  margin: 8px 0 0;
+  color: #236c3a;
+  font-weight: 700;
+}
+
 .alert-panel {
   display: grid;
   gap: 4px;
@@ -187,6 +210,82 @@ h1 {
 .compact-panel {
   display: grid;
   gap: 12px;
+}
+
+.ocr-panel {
+  margin-bottom: 16px;
+}
+
+.helper-copy,
+.ocr-message {
+  color: #526158;
+  line-height: 1.5;
+}
+
+.ocr-message {
+  margin-bottom: 0;
+  font-weight: 700;
+}
+
+.ocr-preview {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.ocr-table {
+  display: grid;
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.ocr-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) minmax(180px, 1.4fr) repeat(3, minmax(88px, 0.7fr)) minmax(76px, 0.6fr);
+  gap: 8px;
+  align-items: center;
+  min-width: 820px;
+}
+
+.ocr-head {
+  color: #526158;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ocr-row input,
+.ocr-row select {
+  min-width: 0;
+  border: 1px solid #ccd8c8;
+  border-radius: 8px;
+  padding: 9px 10px;
+  color: #172018;
+  background: #ffffff;
+}
+
+.ocr-teams {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.match-ok,
+.match-pending {
+  font-size: 13px;
+}
+
+.match-ok {
+  color: #236c3a;
+}
+
+.match-pending {
+  color: #7a5a1f;
+}
+
+.ocr-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .recommendation-card,
