@@ -140,6 +140,13 @@ describe("oddsService", () => {
     expect(withOdds.odds).toMatchObject({ homeWin: 2.1, recommendedDirection: "主胜" });
   });
 
+  it("does not expose bundled sample odds when no automatic odds were fetched", () => {
+    const [withOdds] = applyOddsToMatches([todayMatches[0]], {});
+
+    expect(todayMatches[0].odds).toBeDefined();
+    expect(withOdds.odds).toBeUndefined();
+  });
+
   it("parses valid Sporttery HAD quotes for the requested business date", () => {
     const quotes = parseSportteryOddsResponse(sportteryPayload, "2026-06-26");
 

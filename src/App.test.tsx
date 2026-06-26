@@ -35,9 +35,14 @@ describe("App", () => {
   it("shows date tabs under the title and defaults to today", async () => {
     render(<App />);
 
-    expect(await screen.findByRole("tab", { name: /今天/ })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tab", { name: /昨天/ })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /明天/ })).toBeInTheDocument();
+    const todayTab = await screen.findByRole("tab", { current: "date" });
+    expect(todayTab).toHaveAttribute("aria-selected", "true");
+    expect(todayTab).toHaveTextContent(/\d{2}月\d{2}日/);
+    expect(todayTab).not.toHaveTextContent(/今天|昨天|明天/);
+    expect(todayTab.querySelector(".today-dot")).toBeInTheDocument();
+    expect(screen.queryByText("昨天")).not.toBeInTheDocument();
+    expect(screen.queryByText("今天")).not.toBeInTheDocument();
+    expect(screen.queryByText("明天")).not.toBeInTheDocument();
     expect(screen.getByText("今日世界杯赛事")).toBeInTheDocument();
     expect(screen.getByText(/\d{4}-\d{2}-\d{2}/)).toBeInTheDocument();
   });
@@ -59,7 +64,8 @@ describe("App", () => {
     render(<App />);
 
     expect(await screen.findByText("加拿大")).toBeInTheDocument();
-    await user.click(screen.getByRole("tab", { name: /明天/ }));
+    const nextDateTab = screen.getAllByRole("tab")[4];
+    await user.click(nextDateTab);
 
     expect(await screen.findByText("法国")).toBeInTheDocument();
     expect(screen.getByText("🇫🇷", { selector: ".team-flag" })).toBeInTheDocument();
@@ -204,6 +210,15 @@ describe("App", () => {
     expect(screen.getAllByText("加拿大主胜").length).toBeGreaterThan(0);
   });
 
+  it("does not show bundled sample odds before automatic odds are fetched", async () => {
+    render(<App />);
+
+    expect(await screen.findByText("加拿大")).toBeInTheDocument();
+    expect(screen.queryByText("主胜 2.15")).not.toBeInTheDocument();
+    expect(screen.queryByText("平 3.05")).not.toBeInTheDocument();
+    expect(screen.queryByText("客胜 3.35")).not.toBeInTheDocument();
+  });
+
   it("does not force betting recommendations before odds are fetched", async () => {
     const user = userEvent.setup();
     const [matchWithoutOdds] = todayMatches.map((match) => ({ ...match, odds: undefined }));
@@ -220,8 +235,6 @@ describe("App", () => {
 
   it("shows a concise retry message when odds fetching fails", async () => {
     const user = userEvent.setup();
-    const [matchWithoutOdds] = todayMatches.map((match) => ({ ...match, odds: undefined }));
-    getTodayMatchesMock.mockResolvedValue({ matches: [matchWithoutOdds], source: "football-data" });
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ success: false, message: "今日赔率获取失败，请稍后重试。" }), { status: 502 }),
     );
@@ -230,6 +243,9 @@ describe("App", () => {
     await user.click(await screen.findByRole("button", { name: "自动获取赔率" }));
 
     expect(await screen.findByText("今日赔率获取失败，请稍后重试。")).toBeInTheDocument();
+    expect(screen.queryByText("主胜 2.15")).not.toBeInTheDocument();
+    expect(screen.queryByText("平 3.05")).not.toBeInTheDocument();
+    expect(screen.queryByText("客胜 3.35")).not.toBeInTheDocument();
     expect(screen.queryByText(/JSON|404|stack|接口异常/)).not.toBeInTheDocument();
   });
 });

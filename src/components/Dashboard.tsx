@@ -38,6 +38,8 @@ export function Dashboard({
           <div className="date-tabs" role="tablist" aria-label="选择比赛日期">
             {dateTabs.map((tab) => (
               <button
+                aria-current={tab.isToday ? "date" : undefined}
+                aria-label={tab.isToday ? `${tab.displayDate}，今天` : tab.displayDate}
                 aria-selected={tab.date === selectedDate}
                 className={tab.date === selectedDate ? "date-tab active" : "date-tab"}
                 key={tab.date}
@@ -45,8 +47,8 @@ export function Dashboard({
                 role="tab"
                 type="button"
               >
-                <span>{tab.label}</span>
-                <small>{tab.displayDate}</small>
+                {tab.isToday && <span aria-hidden="true" className="today-dot" />}
+                <span>{tab.displayDate}</span>
               </button>
             ))}
           </div>

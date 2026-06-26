@@ -365,7 +365,7 @@ export function applyOddsToMatches(matches: Match[], oddsByMatchId: OddsByMatchI
     const odds = buildOddsFromInput(oddsByMatchId[match.id] ?? {});
     return {
       ...match,
-      odds: odds ?? match.odds,
+      odds,
     };
   });
 }

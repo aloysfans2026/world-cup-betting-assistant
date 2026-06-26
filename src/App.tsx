@@ -21,8 +21,8 @@ export interface AutoOddsStatus {
 
 export interface DateTab {
   date: string;
-  label: string;
   displayDate: string;
+  isToday: boolean;
 }
 
 function formatLocalDate(date: Date): string {
@@ -46,21 +46,13 @@ function formatTabDate(date: Date): string {
   return `${String(date.getMonth() + 1).padStart(2, "0")}月${String(date.getDate()).padStart(2, "0")}日`;
 }
 
-function labelForDate(date: Date, today: Date): string {
-  const difference = Math.round((date.getTime() - today.getTime()) / 86_400_000);
-  if (difference === -1) return "昨天";
-  if (difference === 0) return "今天";
-  if (difference === 1) return "明天";
-  return formatTabDate(date);
-}
-
 function buildDateTabs(today: Date): DateTab[] {
   return [-3, -2, -1, 0, 1, 2, 3].map((offset) => {
     const date = addDays(today, offset);
     return {
       date: formatLocalDate(date),
-      label: labelForDate(date, today),
       displayDate: formatTabDate(date),
+      isToday: offset === 0,
     };
   });
 }
@@ -116,6 +108,7 @@ export default function App() {
       return;
     }
 
+    setOddsByMatchId({});
     setAutoOddsStatus({ state: "loading", message: "正在获取今日公开赔率..." });
 
     const result = await fetchOddsFromAppApi(selectedDate);

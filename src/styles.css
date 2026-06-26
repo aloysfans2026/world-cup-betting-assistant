@@ -70,30 +70,21 @@ h1 {
 }
 
 .date-tab {
+  position: relative;
   flex: 0 0 auto;
   min-width: 94px;
   border: 1px solid #d9e1d5;
   border-radius: 8px;
-  padding: 9px 12px;
+  padding: 12px;
   color: #526158;
   background: #ffffff;
   cursor: pointer;
   text-align: center;
 }
 
-.date-tab span,
-.date-tab small {
-  display: block;
-}
-
 .date-tab span {
+  display: block;
   font-weight: 800;
-}
-
-.date-tab small {
-  margin-top: 2px;
-  color: #738074;
-  font-size: 12px;
 }
 
 .date-tab.active {
@@ -102,8 +93,15 @@ h1 {
   background: #236c3a;
 }
 
-.date-tab.active small {
-  color: #dceadc;
+.today-dot {
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #d93025;
+  transform: translateX(-50%);
 }
 
 .summary-card,
