@@ -3,11 +3,9 @@ import type { Recommendation } from "../domain/types";
 export function RecommendationSection({
   title,
   items,
-  onSelect,
 }: {
   title: string;
   items: Recommendation[];
-  onSelect: (item: Recommendation) => void;
 }) {
   return (
     <section className="panel compact-panel">
@@ -21,7 +19,6 @@ export function RecommendationSection({
             信心：{item.score.confidence} · 风险：{item.score.risk}
           </p>
           <p>{item.reason}</p>
-          <button onClick={() => onSelect(item)}>查看详情</button>
         </article>
       ))}
     </section>

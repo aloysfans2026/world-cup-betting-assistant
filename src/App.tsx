@@ -1,24 +1,43 @@
 import { useEffect, useMemo, useState } from "react";
 import { Dashboard } from "./components/Dashboard";
 import { Disclaimer } from "./components/Disclaimer";
-import { MatchDetailModal } from "./components/MatchDetailModal";
 import { buildAnalysis } from "./domain/recommendations";
-import type { Match, Recommendation } from "./domain/types";
-import { applyRecognizedOdds, type RecognizedOddsRow } from "./services/ocrOddsService";
+import type { Match } from "./domain/types";
 import { getTodayMatches, type MatchServiceIssue } from "./services/matchService";
-import { applyManualOdds, readManualOdds, saveManualOdds, type ManualOddsByMatchId } from "./services/oddsService";
+import {
+  applyOddsToMatches,
+  fetchOddsFromAppApi,
+  mergeOddsIntoMatches,
+  type OddsByMatchId,
+} from "./services/oddsService";
 import "./styles.css";
+
+export type AutoOddsStatusState = "idle" | "loading" | "success" | "error";
+
+export interface AutoOddsStatus {
+  state: AutoOddsStatusState;
+  message?: string;
+}
+
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function displayTime(value: string | undefined): string {
+  if (!value) return "刚刚";
+  return value.match(/\d{2}:\d{2}/)?.[0] ?? value;
+}
 
 export default function App() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [matchIssue, setMatchIssue] = useState<MatchServiceIssue | null>(null);
-  const [manualOdds, setManualOdds] = useState<ManualOddsByMatchId>(() => readManualOdds());
-  const [recognizedOddsRows, setRecognizedOddsRows] = useState<RecognizedOddsRow[]>([]);
-  const [ocrMessage, setOcrMessage] = useState("");
-  const [isRecognizingOdds, setIsRecognizingOdds] = useState(false);
+  const [oddsByMatchId, setOddsByMatchId] = useState<OddsByMatchId>({});
+  const [autoOddsStatus, setAutoOddsStatus] = useState<AutoOddsStatus>({ state: "idle" });
   const [hasAnalysis, setHasAnalysis] = useState(false);
-  const [selected, setSelected] = useState<Recommendation | null>(null);
-  const matchesWithOdds = useMemo(() => applyManualOdds(matches, manualOdds), [matches, manualOdds]);
+  const matchesWithOdds = useMemo(() => applyOddsToMatches(matches, oddsByMatchId), [matches, oddsByMatchId]);
   const analysis = useMemo(() => buildAnalysis(matchesWithOdds), [matchesWithOdds]);
 
   useEffect(() => {
@@ -35,59 +54,56 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => {
-    saveManualOdds(manualOdds);
-  }, [manualOdds]);
+  const handleAutoFetchOdds = async () => {
+    if (matches.length === 0) {
+      setAutoOddsStatus({ state: "error", message: "今日暂无世界杯比赛。" });
+      return;
+    }
 
-  const openMatch = (match: Match) => {
-    if (!hasAnalysis) return;
+    const date = formatLocalDate(new Date());
+    setAutoOddsStatus({ state: "loading", message: "正在获取今日公开赔率..." });
 
-    const recommendation =
-      analysis.safePicks.find((item) => item.match.id === match.id) ??
-      analysis.valuePicks.find((item) => item.match.id === match.id) ??
-      analysis.trapMatches.find((item) => item.match.id === match.id);
-    if (recommendation) setSelected(recommendation);
+    const result = await fetchOddsFromAppApi(date);
+    if (!result.success || result.odds.length === 0) {
+      setAutoOddsStatus({
+        state: "error",
+        message: "今日赔率获取失败，请稍后重试。",
+      });
+      return;
+    }
+
+    const mergeResult = mergeOddsIntoMatches(matches, result.odds, oddsByMatchId);
+
+    if (mergeResult.matchedCount === 0) {
+      setAutoOddsStatus({
+        state: "error",
+        message: "今日赔率获取失败，请稍后重试。",
+      });
+      return;
+    }
+
+    setOddsByMatchId(mergeResult.oddsByMatchId);
+
+    const details = [`赔率已更新`, `更新 ${displayTime(result.updatedAt)}`, `已填充 ${mergeResult.matchedCount} 场`];
+
+    setAutoOddsStatus({
+      state: "success",
+      message: details.join(" · "),
+    });
   };
 
   return (
     <main className="app-shell">
       <Dashboard
         matches={matchesWithOdds}
-        rawMatches={matches}
         dataIssue={matchIssue}
-        manualOdds={manualOdds}
-        recognizedOddsRows={recognizedOddsRows}
-        ocrMessage={ocrMessage}
-        isRecognizingOdds={isRecognizingOdds}
+        autoOddsStatus={autoOddsStatus}
         hasAnalysis={hasAnalysis}
         analysis={analysis}
         onAnalyze={() => setHasAnalysis(true)}
-        onSelectMatch={openMatch}
-        onSelectRecommendation={setSelected}
-        onApplyRecognizedOdds={() => {
-          setManualOdds((current) => applyRecognizedOdds(current, recognizedOddsRows));
-          setOcrMessage("已应用到今日比赛。赔率来自截图识别，请人工核对。");
-        }}
-        onClearRecognizedOdds={() => {
-          setRecognizedOddsRows([]);
-          setOcrMessage("");
-        }}
-        onOcrMessageChange={setOcrMessage}
-        onOddsChange={(matchId, field, value) => {
-          setManualOdds((current) => ({
-            ...current,
-            [matchId]: {
-              ...current[matchId],
-              [field]: value,
-              source: current[matchId]?.source ?? "manual",
-            },
-          }));
-        }}
-        onRecognizedOddsRowsChange={setRecognizedOddsRows}
-        onRecognizingOddsChange={setIsRecognizingOdds}
+        onAutoFetchOdds={handleAutoFetchOdds}
       />
       <Disclaimer />
-      {selected && <MatchDetailModal recommendation={selected} onClose={() => setSelected(null)} />}
     </main>
   );
 }

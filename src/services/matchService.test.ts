@@ -81,7 +81,7 @@ describe("matchService", () => {
     expect(switzerland.homeTeam.recentForm[0].goalsFor).toBe(2);
   });
 
-  it("maps football-data.org matches into the app match shape", async () => {
+  it("maps football-data.org matches into the app match shape with Chinese team names", async () => {
     const fetcher = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -115,8 +115,8 @@ describe("matchService", () => {
       status: "未开始",
       stage: "小组赛",
       group: "A组",
-      homeTeam: { name: "Canada" },
-      awayTeam: { name: "Morocco" },
+      homeTeam: { name: "加拿大" },
+      awayTeam: { name: "摩洛哥" },
       homeScore: null,
       awayScore: null,
     });
@@ -157,7 +157,8 @@ describe("matchService", () => {
     });
 
     expect(result.source).toBe("football-data");
-    expect(result.matches[0].homeTeam.name).toBe("Portugal");
+    expect(result.matches[0].homeTeam.name).toBe("葡萄牙");
+    expect(result.matches[0].awayTeam.name).toBe("乌兹别克斯坦");
     expect(fetcher).toHaveBeenCalledWith(
       expect.stringContaining("/api/matches?"),
       {},

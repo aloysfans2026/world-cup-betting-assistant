@@ -1,5 +1,6 @@
 import type { Match } from "../domain/types";
 import { todayMatches } from "../fixtures/worldCupMatches";
+import { toChineseTeamName } from "./teamNameService";
 
 const FOOTBALL_DATA_API_BASE_URL = "https://api.football-data.org";
 const FOOTBALL_DATA_MATCHES_PATH = "/v4/competitions/WC/matches";
@@ -108,7 +109,7 @@ function mapGroup(group?: string | null): string | undefined {
 }
 
 function teamName(team: FootballDataTeam): string {
-  return team.shortName || team.name || team.tla || "待定";
+  return toChineseTeamName(team.shortName || team.name || team.tla || "待定");
 }
 
 function mapFootballDataMatch(match: FootballDataMatch): Match {
@@ -137,7 +138,7 @@ function mapFootballDataMatch(match: FootballDataMatch): Match {
       recentForm: [],
     },
     recentHeadToHead: [],
-    notes: ["赛程/比分来自 football-data.org", "赔率需手动录入后再分析"],
+    notes: [],
   };
 }
 

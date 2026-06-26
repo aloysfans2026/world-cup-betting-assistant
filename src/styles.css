@@ -88,11 +88,16 @@ h1 {
   align-items: center;
 }
 
+.section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 .primary-button,
 .secondary-button,
-.recommendation-card button,
-.close-button,
-.upload-button {
+.close-button {
   border: 0;
   border-radius: 8px;
   cursor: pointer;
@@ -106,18 +111,15 @@ h1 {
 }
 
 .secondary-button,
-.upload-button {
+.close-button {
   padding: 12px 18px;
   color: #236c3a;
   background: #e8f3e8;
 }
 
-.upload-button input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  opacity: 0;
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
 }
 
 .match-list {
@@ -142,7 +144,6 @@ h1 {
   border: 0;
   background: transparent;
   text-align: left;
-  cursor: pointer;
 }
 
 .match-row em {
@@ -151,41 +152,44 @@ h1 {
   text-align: right;
 }
 
-.odds-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+.odds-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   border-top: 1px solid #e3eadf;
   padding-top: 10px;
 }
 
-.odds-grid label {
-  display: grid;
-  gap: 6px;
-  color: #526158;
+.odds-pills span {
+  border: 1px solid #d9e5d5;
+  border-radius: 8px;
+  padding: 7px 10px;
+  color: #236c3a;
+  background: #f3f8f1;
   font-size: 13px;
   font-weight: 700;
 }
 
-.odds-grid input {
-  min-width: 0;
-  border: 1px solid #ccd8c8;
+.odds-fetch-status {
+  margin: 8px 0 14px;
+  border: 1px solid #d9e1d5;
   border-radius: 8px;
-  padding: 9px 10px;
-  color: #172018;
-  background: #ffffff;
-}
-
-.odds-warning {
-  margin: 8px 0 0;
-  color: #7a5a1f;
+  padding: 10px 12px;
+  color: #526158;
+  background: #fbfcfa;
   font-weight: 700;
 }
 
-.odds-source {
-  margin: 8px 0 0;
+.odds-fetch-status.success {
+  border-color: #b9d6bc;
   color: #236c3a;
-  font-weight: 700;
+  background: #f0f8ef;
+}
+
+.odds-fetch-status.error {
+  border-color: #e2c782;
+  color: #7a5a1f;
+  background: #fff8e5;
 }
 
 .alert-panel {
@@ -212,95 +216,12 @@ h1 {
   gap: 12px;
 }
 
-.ocr-panel {
-  margin-bottom: 16px;
-}
-
-.helper-copy,
-.ocr-message {
-  color: #526158;
-  line-height: 1.5;
-}
-
-.ocr-message {
-  margin-bottom: 0;
-  font-weight: 700;
-}
-
-.ocr-preview {
-  display: grid;
-  gap: 12px;
-  margin-top: 14px;
-}
-
-.ocr-table {
-  display: grid;
-  gap: 8px;
-  overflow-x: auto;
-}
-
-.ocr-row {
-  display: grid;
-  grid-template-columns: minmax(180px, 1.4fr) minmax(180px, 1.4fr) repeat(3, minmax(88px, 0.7fr)) minmax(76px, 0.6fr);
-  gap: 8px;
-  align-items: center;
-  min-width: 820px;
-}
-
-.ocr-head {
-  color: #526158;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.ocr-row input,
-.ocr-row select {
-  min-width: 0;
-  border: 1px solid #ccd8c8;
-  border-radius: 8px;
-  padding: 9px 10px;
-  color: #172018;
-  background: #ffffff;
-}
-
-.ocr-teams {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-}
-
-.match-ok,
-.match-pending {
-  font-size: 13px;
-}
-
-.match-ok {
-  color: #236c3a;
-}
-
-.match-pending {
-  color: #7a5a1f;
-}
-
-.ocr-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
 .recommendation-card,
 .parlay-card {
   border: 1px solid #e1e8dd;
   border-radius: 8px;
   padding: 14px;
   background: #fbfcfa;
-}
-
-.recommendation-card button {
-  margin-top: 8px;
-  padding: 8px 10px;
-  color: #236c3a;
-  background: #e8f3e8;
 }
 
 .disclaimer {
@@ -379,6 +300,14 @@ h1 {
   .section-heading {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .section-actions {
+    justify-content: stretch;
+  }
+
+  .section-actions button {
+    flex: 1;
   }
 
   .match-row {

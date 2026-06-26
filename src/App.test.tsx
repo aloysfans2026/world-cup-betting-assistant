@@ -9,25 +9,19 @@ const { getTodayMatchesMock } = vi.hoisted(() => ({
   getTodayMatchesMock: vi.fn(),
 }));
 
-const { recognizeImageOddsMock } = vi.hoisted(() => ({
-  recognizeImageOddsMock: vi.fn(),
-}));
-
 vi.mock("./services/matchService", () => ({
   getTodayMatches: getTodayMatchesMock,
 }));
 
-vi.mock("./services/browserOcrService", () => ({
-  recognizeImageOdds: recognizeImageOddsMock,
-}));
-
 describe("App", () => {
+  const fetchMock = vi.fn();
+
   beforeEach(() => {
     window.localStorage.clear();
+    vi.stubGlobal("fetch", fetchMock);
+    fetchMock.mockReset();
     getTodayMatchesMock.mockReset();
-    getTodayMatchesMock.mockResolvedValue({ matches: todayMatches, source: "mock-fallback" });
-    recognizeImageOddsMock.mockReset();
-    recognizeImageOddsMock.mockResolvedValue("周二001 加拿大 摩洛哥 1.82 3.20 4.10");
+    getTodayMatchesMock.mockResolvedValue({ matches: todayMatches, source: "football-data" });
   });
 
   it("loads matches through the match service boundary", async () => {
@@ -42,11 +36,11 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(await screen.findByText("今日暂无世界杯赛事。")).toBeInTheDocument();
+    expect(await screen.findByText("今日暂无世界杯比赛。")).toBeInTheDocument();
     expect(screen.queryByText("今日赛事数据获取失败，请稍后重试。")).not.toBeInTheDocument();
   });
 
-  it("shows a clear fallback message when the match API fails", async () => {
+  it("shows a clear user-facing message when the match API fails", async () => {
     getTodayMatchesMock.mockResolvedValue({
       matches: todayMatches,
       source: "mock-fallback",
@@ -60,7 +54,7 @@ describe("App", () => {
     render(<App />);
 
     expect(await screen.findByText("今日赛事数据获取失败，请稍后重试。")).toBeInTheDocument();
-    expect(screen.getByText("网络错误，已使用本地示例数据。")).toBeInTheDocument();
+    expect(screen.queryByText("网络错误，已使用本地示例数据。")).not.toBeInTheDocument();
     expect(screen.getByText("加拿大 VS 摩洛哥")).toBeInTheDocument();
   });
 
@@ -70,12 +64,12 @@ describe("App", () => {
 
     expect(await screen.findByText("今日世界杯赛事")).toBeInTheDocument();
     expect(await screen.findByText("加拿大 VS 摩洛哥")).toBeInTheDocument();
-    expect(screen.queryByText("今日稳胆 TOP3")).not.toBeInTheDocument();
+    expect(screen.queryByText("今日稳胆前三")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "开始分析" }));
 
-    expect(screen.getByText("今日稳胆 TOP3")).toBeInTheDocument();
-    expect(screen.getByText("今日价值投注 TOP3")).toBeInTheDocument();
+    expect(screen.getByText("今日稳胆前三")).toBeInTheDocument();
+    expect(screen.getByText("今日价值前三")).toBeInTheDocument();
     expect(screen.getByText("今日避坑比赛")).toBeInTheDocument();
     expect(screen.getByText("推荐串关")).toBeInTheDocument();
     expect(screen.getByText("辅助决策，不保证结果，不自动下注。")).toBeInTheDocument();
@@ -85,22 +79,19 @@ describe("App", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(await screen.findByRole("button", { name: /加拿大 VS 摩洛哥/ }));
-
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(await screen.findByText("加拿大 VS 摩洛哥")).toBeInTheDocument();
     expect(screen.queryByText("AI解释")).not.toBeInTheDocument();
   });
 
-  it("opens match detail from a recommendation", async () => {
+  it("keeps the page to the two core action buttons", async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(await screen.findByRole("button", { name: "开始分析" }));
-    await user.click(screen.getAllByRole("button", { name: /查看详情/ })[0]);
+    await screen.findByText("加拿大 VS 摩洛哥");
+    expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual(["自动获取赔率", "开始分析"]);
 
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByText("评分拆解")).toBeInTheDocument();
-    expect(screen.getByText("AI解释")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "开始分析" }));
+    expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual(["自动获取赔率", "开始分析"]);
   });
 
   it("keeps risk copy visible for users before and after analysis", async () => {
@@ -113,70 +104,83 @@ describe("App", () => {
     expect(screen.getByText(/示例投入仅用于演示风险分层/)).toBeInTheDocument();
   });
 
-  it("lets users manually enter win draw loss odds before analysis", async () => {
+  it("does not render manual odds entry or screenshot upload controls", async () => {
+    render(<App />);
+
+    expect(await screen.findByText("加拿大 VS 摩洛哥")).toBeInTheDocument();
+    expect(screen.queryByLabelText("加拿大主胜赔率")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("加拿大平局赔率")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("加拿大客胜赔率")).not.toBeInTheDocument();
+    expect(screen.queryByText("上传赔率截图")).not.toBeInTheDocument();
+    expect(screen.queryByText("手动录入")).not.toBeInTheDocument();
+    expect(screen.queryByText("手动填入")).not.toBeInTheDocument();
+  });
+
+  it("fetches odds automatically and fills matches without user input", async () => {
     const user = userEvent.setup();
     const [matchWithoutOdds] = todayMatches.map((match) => ({ ...match, odds: undefined }));
     getTodayMatchesMock.mockResolvedValue({ matches: [matchWithoutOdds], source: "football-data" });
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          date: "2026-06-26",
+          source: "sporttery",
+          updatedAt: "2026-06-26 16:53:24",
+          odds: [
+            {
+              homeTeam: "加拿大",
+              awayTeam: "摩洛哥",
+              homeWin: 1.82,
+              draw: 3.2,
+              awayWin: 4.1,
+              source: "sporttery",
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
     render(<App />);
 
-    await user.type(await screen.findByLabelText("加拿大主胜赔率"), "1.82");
-    await user.type(screen.getByLabelText("加拿大平局赔率"), "3.20");
-    await user.type(screen.getByLabelText("加拿大客胜赔率"), "4.10");
+    await user.click(await screen.findByRole("button", { name: "自动获取赔率" }));
+
+    expect(await screen.findByText(/赔率已更新/)).toBeInTheDocument();
+    expect(screen.getByText("主胜 1.82")).toBeInTheDocument();
+    expect(screen.getByText("平 3.2")).toBeInTheDocument();
+    expect(screen.getByText("客胜 4.1")).toBeInTheDocument();
+
     await user.click(screen.getByRole("button", { name: "开始分析" }));
 
     expect(screen.getAllByText("加拿大主胜").length).toBeGreaterThan(0);
-    expect(screen.queryByText("缺少赔率，暂不建议下注")).not.toBeInTheDocument();
   });
 
-  it("does not force betting recommendations when odds are missing", async () => {
+  it("does not force betting recommendations before odds are fetched", async () => {
     const user = userEvent.setup();
     const [matchWithoutOdds] = todayMatches.map((match) => ({ ...match, odds: undefined }));
     getTodayMatchesMock.mockResolvedValue({ matches: [matchWithoutOdds], source: "football-data" });
     render(<App />);
 
-    expect(await screen.findByText("缺少赔率，暂不建议下注")).toBeInTheDocument();
+    expect(await screen.findByText("加拿大 VS 摩洛哥")).toBeInTheDocument();
+    expect(screen.queryByText("缺少赔率，暂不建议下注")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "开始分析" }));
 
     expect(screen.getAllByText("推荐结果不足，请谨慎参考。").length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText("加拿大主胜")).not.toBeInTheDocument();
   });
 
-  it("lets users upload an odds screenshot, review OCR results, and apply odds to matches", async () => {
+  it("shows a concise retry message when odds fetching fails", async () => {
     const user = userEvent.setup();
     const [matchWithoutOdds] = todayMatches.map((match) => ({ ...match, odds: undefined }));
     getTodayMatchesMock.mockResolvedValue({ matches: [matchWithoutOdds], source: "football-data" });
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ success: false, message: "今日赔率获取失败，请稍后重试。" }), { status: 502 }),
+    );
     render(<App />);
 
-    await screen.findByText("加拿大 VS 摩洛哥");
-    const image = new File(["fake image"], "odds.png", { type: "image/png" });
-    await user.upload(screen.getByLabelText("上传赔率截图"), image);
+    await user.click(await screen.findByRole("button", { name: "自动获取赔率" }));
 
-    expect(await screen.findByDisplayValue("加拿大")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("摩洛哥")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("1.82")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("3.20")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("4.10")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "应用到今日比赛" }));
-
-    expect(screen.getByLabelText("加拿大主胜赔率")).toHaveValue(1.82);
-    expect(screen.getByText("赔率来自截图识别，请人工核对")).toBeInTheDocument();
-    expect(screen.queryByText("缺少赔率，暂不建议下注")).not.toBeInTheDocument();
-  });
-
-  it("keeps manual odds entry available when screenshot OCR fails", async () => {
-    const user = userEvent.setup();
-    recognizeImageOddsMock.mockRejectedValue(new Error("ocr failed"));
-    const [matchWithoutOdds] = todayMatches.map((match) => ({ ...match, odds: undefined }));
-    getTodayMatchesMock.mockResolvedValue({ matches: [matchWithoutOdds], source: "football-data" });
-    render(<App />);
-
-    await screen.findByText("加拿大 VS 摩洛哥");
-    await user.upload(screen.getByLabelText("上传赔率截图"), new File(["fake image"], "odds.jpg", { type: "image/jpeg" }));
-
-    expect(await screen.findByText("截图识别失败，可继续手动录入赔率。")).toBeInTheDocument();
-    await user.type(screen.getByLabelText("加拿大主胜赔率"), "1.90");
-
-    expect(screen.getByLabelText("加拿大主胜赔率")).toHaveValue(1.9);
+    expect(await screen.findByText("今日赔率获取失败，请稍后重试。")).toBeInTheDocument();
+    expect(screen.queryByText(/JSON|404|stack|接口异常/)).not.toBeInTheDocument();
   });
 });
