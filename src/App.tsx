@@ -3,10 +3,10 @@ import { Dashboard } from "./components/Dashboard";
 import { Disclaimer } from "./components/Disclaimer";
 import { buildAnalysis } from "./domain/recommendations";
 import type { Match } from "./domain/types";
-import { getTodayMatches, type MatchServiceIssue } from "./services/matchService";
+import { getMatchesForDateRange, type MatchServiceIssue } from "./services/matchService";
 import {
   applyOddsToMatches,
-  fetchOddsFromAppApi,
+  fetchOddsRangeFromAppApi,
   mergeOddsIntoMatches,
   type OddsByMatchId,
 } from "./services/oddsService";
@@ -74,12 +74,15 @@ function displayTime(value: string | undefined): string {
 export default function App() {
   const today = useMemo(() => startOfLocalDay(new Date()), []);
   const dateTabs = useMemo(() => buildDateTabs(today), [today]);
+  const weekDateFrom = dateTabs[0]?.date ?? formatLocalDate(today);
+  const weekDateTo = dateTabs[dateTabs.length - 1]?.date ?? formatLocalDate(today);
   const [selectedDate, setSelectedDate] = useState(() => formatLocalDate(today));
-  const [matches, setMatches] = useState<Match[]>([]);
+  const [allMatches, setAllMatches] = useState<Match[]>([]);
   const [matchIssue, setMatchIssue] = useState<MatchServiceIssue | null>(null);
   const [oddsByMatchId, setOddsByMatchId] = useState<OddsByMatchId>({});
   const [autoOddsStatus, setAutoOddsStatus] = useState<AutoOddsStatus>({ state: "idle" });
   const [hasAnalysis, setHasAnalysis] = useState(false);
+  const matches = useMemo(() => allMatches.filter((match) => match.matchDate === selectedDate), [allMatches, selectedDate]);
   const sortedMatches = useMemo(() => sortMatchesByKickoff(matches), [matches]);
   const matchesWithOdds = useMemo(() => applyOddsToMatches(sortedMatches, oddsByMatchId), [oddsByMatchId, sortedMatches]);
   const analysis = useMemo(() => buildAnalysis(matchesWithOdds), [matchesWithOdds]);
@@ -91,15 +94,20 @@ export default function App() {
     setAutoOddsStatus({ state: "idle" });
     setHasAnalysis(false);
 
-    getTodayMatches({ date: new Date(`${selectedDate}T00:00:00`) }).then((result) => {
+    getMatchesForDateRange({ dateFrom: weekDateFrom, dateTo: weekDateTo }).then((result) => {
       if (!isCurrent) return;
-      setMatches(result.matches);
+      setAllMatches(result.matches);
       setMatchIssue(result.issue ?? null);
     });
 
     return () => {
       isCurrent = false;
     };
+  }, [weekDateFrom, weekDateTo]);
+
+  useEffect(() => {
+    setAutoOddsStatus({ state: "idle" });
+    setHasAnalysis(false);
   }, [selectedDate]);
 
   const handleAutoFetchOdds = async () => {
@@ -111,7 +119,7 @@ export default function App() {
     setOddsByMatchId({});
     setAutoOddsStatus({ state: "loading", message: "正在获取今日公开赔率..." });
 
-    const result = await fetchOddsFromAppApi(selectedDate);
+    const result = await fetchOddsRangeFromAppApi(weekDateFrom, weekDateTo);
     if (!result.success || result.odds.length === 0) {
       setAutoOddsStatus({
         state: "error",
@@ -120,7 +128,7 @@ export default function App() {
       return;
     }
 
-    const mergeResult = mergeOddsIntoMatches(matches, result.odds, oddsByMatchId);
+    const mergeResult = mergeOddsIntoMatches(allMatches, result.odds, oddsByMatchId);
 
     if (mergeResult.matchedCount === 0) {
       setAutoOddsStatus({
@@ -132,7 +140,13 @@ export default function App() {
 
     setOddsByMatchId(mergeResult.oddsByMatchId);
 
-    const details = [`赔率已更新`, `更新 ${displayTime(result.updatedAt)}`, `已填充 ${mergeResult.matchedCount} 场`];
+    const currentDateFilledCount = matches.filter((match) => mergeResult.oddsByMatchId[match.id]).length;
+    const details = [`赔率已更新`, `当前日期 ${currentDateFilledCount}/${matches.length} 场`];
+    if (currentDateFilledCount < matches.length) {
+      details.push("部分比赛暂无胜平负赔率");
+    } else if (result.updatedAt) {
+      details.push(`更新 ${displayTime(result.updatedAt)}`);
+    }
 
     setAutoOddsStatus({
       state: "success",

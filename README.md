@@ -43,6 +43,34 @@ npm run dev
 FOOTBALL_API_KEY=your_api_key_here
 ```
 
+## 部署
+
+项目同时兼容 Vercel 和腾讯云 EdgeOne Pages：
+
+- Vercel：使用 `api/matches.js` 和 `api/odds.js`。
+- EdgeOne Pages：使用 `cloud-functions/api/matches/index.js` 和 `cloud-functions/api/odds/index.js`。
+- 两个平台共用同一套服务端业务处理逻辑，前端仍然只请求 `/api/matches` 和 `/api/odds`。
+
+构建命令统一为：
+
+```bash
+npm run build
+```
+
+输出目录统一为：
+
+```text
+dist
+```
+
+线上环境变量统一配置：
+
+```text
+FOOTBALL_API_KEY
+```
+
+EdgeOne Pages 的首次配置步骤见 [EDGEONE_DEPLOY.md](EDGEONE_DEPLOY.md)。
+
 ## 验证
 
 ```bash

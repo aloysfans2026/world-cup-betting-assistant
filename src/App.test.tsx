@@ -1,33 +1,51 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { todayMatches } from "./fixtures/worldCupMatches";
-import { getTodayMatches } from "./services/matchService";
+import { getMatchesForDateRange } from "./services/matchService";
 
-const { getTodayMatchesMock } = vi.hoisted(() => ({
-  getTodayMatchesMock: vi.fn(),
+const { getMatchesForDateRangeMock } = vi.hoisted(() => ({
+  getMatchesForDateRangeMock: vi.fn(),
 }));
 
 vi.mock("./services/matchService", () => ({
-  getTodayMatches: getTodayMatchesMock,
+  getMatchesForDateRange: getMatchesForDateRangeMock,
 }));
+
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function addDays(date: Date, days: number): Date {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
+}
+
+function matchesForDate(date: string) {
+  return todayMatches.map((match) => ({ ...match, matchDate: date }));
+}
 
 describe("App", () => {
   const fetchMock = vi.fn();
 
   beforeEach(() => {
+    const todayDate = formatLocalDate(new Date());
     window.localStorage.clear();
     vi.stubGlobal("fetch", fetchMock);
     fetchMock.mockReset();
-    getTodayMatchesMock.mockReset();
-    getTodayMatchesMock.mockResolvedValue({ matches: todayMatches, source: "football-data" });
+    getMatchesForDateRangeMock.mockReset();
+    getMatchesForDateRangeMock.mockResolvedValue({ matches: matchesForDate(todayDate), source: "football-data" });
   });
 
   it("loads matches through the match service boundary", async () => {
     render(<App />);
 
-    expect(getTodayMatches).toHaveBeenCalledTimes(1);
+    expect(getMatchesForDateRange).toHaveBeenCalledTimes(1);
     expect(await screen.findByText("加拿大")).toBeInTheDocument();
     expect(screen.getByText("🇨🇦", { selector: ".team-flag" })).toBeInTheDocument();
   });
@@ -49,17 +67,20 @@ describe("App", () => {
 
   it("switches match date without refreshing the page", async () => {
     const user = userEvent.setup();
+    const todayDate = formatLocalDate(new Date());
+    const tomorrowDate = formatLocalDate(addDays(new Date(), 1));
     const tomorrowMatch = {
       ...todayMatches[0],
       id: "tomorrow-france-brazil",
-      matchDate: "2026-06-27",
+      matchDate: tomorrowDate,
       kickoffTime: "08:00",
       homeTeam: { ...todayMatches[0].homeTeam, id: "france", name: "法国" },
       awayTeam: { ...todayMatches[0].awayTeam, id: "brazil", name: "巴西" },
     };
-    getTodayMatchesMock
-      .mockResolvedValueOnce({ matches: todayMatches, source: "football-data" })
-      .mockResolvedValueOnce({ matches: [tomorrowMatch], source: "football-data" });
+    getMatchesForDateRangeMock.mockResolvedValueOnce({
+      matches: [...matchesForDate(todayDate), tomorrowMatch],
+      source: "football-data",
+    });
 
     render(<App />);
 
@@ -69,27 +90,73 @@ describe("App", () => {
 
     expect(await screen.findByText("法国")).toBeInTheDocument();
     expect(screen.getByText("🇫🇷", { selector: ".team-flag" })).toBeInTheDocument();
-    expect(getTodayMatches).toHaveBeenCalledTimes(2);
+    expect(getMatchesForDateRange).toHaveBeenCalledTimes(1);
   });
 
   it("sorts matches by kickoff time", async () => {
-    getTodayMatchesMock.mockResolvedValue({
+    const todayDate = formatLocalDate(new Date());
+    getMatchesForDateRangeMock.mockResolvedValue({
       source: "football-data",
       matches: [
-        { ...todayMatches[0], id: "late", kickoffTime: "10:00" },
-        { ...todayMatches[1], id: "early", kickoffTime: "03:00" },
-        { ...todayMatches[2], id: "middle", kickoffTime: "08:00" },
+        { ...todayMatches[0], id: "late", matchDate: todayDate, kickoffTime: "10:00" },
+        { ...todayMatches[1], id: "early", matchDate: todayDate, kickoffTime: "03:00" },
+        { ...todayMatches[2], id: "middle", matchDate: todayDate, kickoffTime: "08:00" },
       ],
     });
 
     render(<App />);
 
     const kickoffTimes = (await screen.findAllByTestId("match-kickoff")).map((item) => item.textContent);
-    expect(kickoffTimes).toEqual(["03:00 开赛", "08:00 开赛", "10:00 开赛"]);
+    expect(kickoffTimes).toEqual(["03:00", "08:00", "10:00"]);
+  });
+
+  it("shows kickoff time, match status, and final result separately", async () => {
+    const todayDate = formatLocalDate(new Date());
+    getMatchesForDateRangeMock.mockResolvedValue({
+      source: "sporttery",
+      matches: [
+        {
+          ...todayMatches[0],
+          id: "live-match",
+          matchDate: todayDate,
+          kickoffTime: "08:00",
+          status: "进行中",
+          homeScore: 0,
+          awayScore: 1,
+          homeTeam: { ...todayMatches[0].homeTeam, name: "乌拉圭" },
+          awayTeam: { ...todayMatches[0].awayTeam, name: "西班牙" },
+        },
+        {
+          ...todayMatches[1],
+          id: "finished-match",
+          matchDate: todayDate,
+          kickoffTime: "03:00",
+          status: "已结束",
+          homeScore: 5,
+          awayScore: 0,
+          homeTeam: { ...todayMatches[1].homeTeam, name: "塞内加尔" },
+          awayTeam: { ...todayMatches[1].awayTeam, name: "伊拉克" },
+        },
+      ],
+    });
+
+    render(<App />);
+
+    const liveCard = (await screen.findByText("乌拉圭")).closest(".match-card");
+    expect(liveCard).not.toBeNull();
+    expect(within(liveCard as HTMLElement).getByTestId("match-kickoff")).toHaveTextContent("08:00");
+    expect(within(liveCard as HTMLElement).getByText("进行中")).toBeInTheDocument();
+    expect(within(liveCard as HTMLElement).queryByTestId("match-result")).not.toBeInTheDocument();
+
+    const finishedCard = screen.getByText("塞内加尔").closest(".match-card");
+    expect(finishedCard).not.toBeNull();
+    expect(within(finishedCard as HTMLElement).getByTestId("match-kickoff")).toHaveTextContent("03:00");
+    expect(within(finishedCard as HTMLElement).getByText("已结束")).toBeInTheDocument();
+    expect(within(finishedCard as HTMLElement).getByTestId("match-result")).toHaveTextContent("赛果 5:0");
   });
 
   it("shows an empty state when the real API returns no World Cup matches today", async () => {
-    getTodayMatchesMock.mockResolvedValue({ matches: [], source: "football-data" });
+    getMatchesForDateRangeMock.mockResolvedValue({ matches: [], source: "football-data" });
 
     render(<App />);
 
@@ -98,8 +165,9 @@ describe("App", () => {
   });
 
   it("shows a clear user-facing message when the match API fails", async () => {
-    getTodayMatchesMock.mockResolvedValue({
-      matches: todayMatches,
+    const todayDate = formatLocalDate(new Date());
+    getMatchesForDateRangeMock.mockResolvedValue({
+      matches: matchesForDate(todayDate),
       source: "mock-fallback",
       issue: {
         kind: "network",
@@ -173,8 +241,9 @@ describe("App", () => {
 
   it("fetches odds automatically and fills matches without user input", async () => {
     const user = userEvent.setup();
-    const [matchWithoutOdds] = todayMatches.map((match) => ({ ...match, odds: undefined }));
-    getTodayMatchesMock.mockResolvedValue({ matches: [matchWithoutOdds], source: "football-data" });
+    const todayDate = formatLocalDate(new Date());
+    const [matchWithoutOdds] = matchesForDate(todayDate).map((match) => ({ ...match, odds: undefined }));
+    getMatchesForDateRangeMock.mockResolvedValue({ matches: [matchWithoutOdds], source: "football-data" });
     fetchMock.mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -207,7 +276,7 @@ describe("App", () => {
 
     await user.click(screen.getByRole("button", { name: "开始分析" }));
 
-    expect(screen.getAllByText("加拿大主胜").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("加拿大胜").length).toBeGreaterThan(0);
   });
 
   it("does not show bundled sample odds before automatic odds are fetched", async () => {
@@ -221,8 +290,9 @@ describe("App", () => {
 
   it("does not force betting recommendations before odds are fetched", async () => {
     const user = userEvent.setup();
-    const [matchWithoutOdds] = todayMatches.map((match) => ({ ...match, odds: undefined }));
-    getTodayMatchesMock.mockResolvedValue({ matches: [matchWithoutOdds], source: "football-data" });
+    const todayDate = formatLocalDate(new Date());
+    const [matchWithoutOdds] = matchesForDate(todayDate).map((match) => ({ ...match, odds: undefined }));
+    getMatchesForDateRangeMock.mockResolvedValue({ matches: [matchWithoutOdds], source: "football-data" });
     render(<App />);
 
     expect(await screen.findByText("加拿大")).toBeInTheDocument();
@@ -230,7 +300,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "开始分析" }));
 
     expect(screen.getAllByText("推荐结果不足，请谨慎参考。").length).toBeGreaterThanOrEqual(1);
-    expect(screen.queryByText("加拿大主胜")).not.toBeInTheDocument();
+    expect(screen.queryByText("加拿大胜")).not.toBeInTheDocument();
   });
 
   it("shows a concise retry message when odds fetching fails", async () => {

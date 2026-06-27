@@ -47,6 +47,8 @@ export interface FetchOddsOptions {
 export interface FetchOddsResult {
   success: boolean;
   date: string;
+  dateFrom?: string;
+  dateTo?: string;
   source: OddsQuoteSource | null;
   fallbackUsed: boolean;
   updatedAt?: string;
@@ -154,7 +156,23 @@ export function buildOddsFromInput(input: AppliedOddsInput): Odds | undefined {
   };
 }
 
-export function parseSportteryOddsResponse(response: unknown, date: string): OddsQuote[] {
+function inDateRange(date: string, dateFrom: string, dateTo: string): boolean {
+  if (!date) return false;
+  if (date < dateFrom) return false;
+  if (date > dateTo) return false;
+  return true;
+}
+
+function rangeFromInput(dateOrRange: string | { dateFrom: string; dateTo?: string }): { dateFrom: string; dateTo: string } {
+  if (typeof dateOrRange === "string") return { dateFrom: dateOrRange, dateTo: dateOrRange };
+  return { dateFrom: dateOrRange.dateFrom, dateTo: dateOrRange.dateTo ?? dateOrRange.dateFrom };
+}
+
+export function parseSportteryOddsResponse(
+  response: unknown,
+  dateOrRange: string | { dateFrom: string; dateTo?: string },
+): OddsQuote[] {
+  const { dateFrom, dateTo } = rangeFromInput(dateOrRange);
   const root = asRecord(response);
   const value = asRecord(root?.value);
   if (!value) return [];
@@ -169,8 +187,8 @@ export function parseSportteryOddsResponse(response: unknown, date: string): Odd
       const match = asRecord(matchRaw);
       if (!match) return [];
 
-      const businessDate = asString(match.businessDate) || groupBusinessDate;
-      if (businessDate !== date) return [];
+      const matchDate = asString(match.matchDate) || asString(match.businessDate) || groupBusinessDate;
+      if (!inDateRange(matchDate, dateFrom, dateTo)) return [];
 
       const had = asRecord(match.had);
       if (!had) return [];
@@ -205,7 +223,11 @@ export function parseSportteryOddsResponse(response: unknown, date: string): Odd
   });
 }
 
-export function parseFallback500OddsResponse(response: unknown, date: string): OddsQuote[] {
+export function parseFallback500OddsResponse(
+  response: unknown,
+  dateOrRange: string | { dateFrom: string; dateTo?: string },
+): OddsQuote[] {
+  const { dateFrom, dateTo } = rangeFromInput(dateOrRange);
   const root = asRecord(response);
   const data = asRecord(root?.data);
   if (!data) return [];
@@ -214,7 +236,8 @@ export function parseFallback500OddsResponse(response: unknown, date: string): O
     const match = asRecord(matchRaw);
     if (!match) return [];
 
-    if (asString(match.ownerdate) !== date) return [];
+    const matchDate = asString(match.matchdate || match.matchDate || match.ownerdate);
+    if (!inDateRange(matchDate, dateFrom, dateTo)) return [];
 
     const extraInfo = asRecord(match.extra_info);
     const currentOdds = asString(extraInfo?.currodds);
@@ -299,27 +322,38 @@ export function mergeOddsIntoMatches(
   };
 }
 
-function oddsUrlFor(date: string, apiBaseUrl: string): string {
+function oddsUrlFor(dateOrRange: string | { dateFrom: string; dateTo: string }, apiBaseUrl: string): string {
   const baseUrl = apiBaseUrl.replace(/\/$/, "");
   const browserOrigin = globalThis.location?.origin ?? "http://localhost";
   const url = new URL(`${baseUrl}${APP_ODDS_PATH}`, browserOrigin);
 
-  url.searchParams.set("date", date);
+  if (typeof dateOrRange === "string") {
+    url.searchParams.set("date", dateOrRange);
+  } else {
+    url.searchParams.set("dateFrom", dateOrRange.dateFrom);
+    url.searchParams.set("dateTo", dateOrRange.dateTo);
+  }
   return url.toString();
 }
 
-export async function fetchOddsFromAppApi(date: string, options: FetchOddsOptions = {}): Promise<FetchOddsResult> {
+async function fetchOddsFromAppApiInternal(
+  dateOrRange: string | { dateFrom: string; dateTo: string },
+  options: FetchOddsOptions = {},
+): Promise<FetchOddsResult> {
   const fetcher = options.fetcher ?? fetch;
   const apiBaseUrl = options.apiBaseUrl ?? APP_API_BASE_URL;
+  const fallbackDate = typeof dateOrRange === "string" ? dateOrRange : dateOrRange.dateFrom;
 
   try {
-    const response = await fetcher(oddsUrlFor(date, apiBaseUrl));
+    const response = await fetcher(oddsUrlFor(dateOrRange, apiBaseUrl));
     const data = (await response.json()) as Partial<FetchOddsResult>;
 
     if (!response.ok || data.success === false) {
       return {
         success: false,
-        date,
+        date: data.date || fallbackDate,
+        dateFrom: data.dateFrom,
+        dateTo: data.dateTo,
         source: null,
         fallbackUsed: Boolean(data.fallbackUsed),
         odds: [],
@@ -330,7 +364,9 @@ export async function fetchOddsFromAppApi(date: string, options: FetchOddsOption
 
     return {
       success: true,
-      date: data.date || date,
+      date: data.date || fallbackDate,
+      dateFrom: data.dateFrom,
+      dateTo: data.dateTo,
       source: data.source ?? null,
       fallbackUsed: Boolean(data.fallbackUsed),
       updatedAt: data.updatedAt,
@@ -341,13 +377,25 @@ export async function fetchOddsFromAppApi(date: string, options: FetchOddsOption
   } catch {
     return {
       success: false,
-      date,
+      date: fallbackDate,
       source: null,
       fallbackUsed: false,
       odds: [],
       message: "今日赔率获取失败，请稍后重试。",
     };
   }
+}
+
+export function fetchOddsFromAppApi(date: string, options: FetchOddsOptions = {}): Promise<FetchOddsResult> {
+  return fetchOddsFromAppApiInternal(date, options);
+}
+
+export function fetchOddsRangeFromAppApi(
+  dateFrom: string,
+  dateTo: string,
+  options: FetchOddsOptions = {},
+): Promise<FetchOddsResult> {
+  return fetchOddsFromAppApiInternal({ dateFrom, dateTo }, options);
 }
 
 export async function fetchTodaySportteryOdds(date: string, options: FetchOddsOptions = {}): Promise<OddsQuote[]> {

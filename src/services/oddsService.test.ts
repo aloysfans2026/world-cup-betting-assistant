@@ -89,6 +89,7 @@ const fallback500Payload = {
         awaysxname: "法国",
         matchtime: "2026-06-27 03:00:00",
         extra_info: { currodds: "4.35/4.15/1.52" },
+        matchdate: "2026-06-27",
       },
       {
         order: "周五062",
@@ -97,6 +98,7 @@ const fallback500Payload = {
         awaysxname: "伊拉克",
         matchtime: "2026-06-27 03:00:00",
         extra_info: { currodds: "-/-/-" },
+        matchdate: "2026-06-27",
       },
       {
         order: "周四001",
@@ -147,8 +149,8 @@ describe("oddsService", () => {
     expect(withOdds.odds).toBeUndefined();
   });
 
-  it("parses valid Sporttery HAD quotes for the requested business date", () => {
-    const quotes = parseSportteryOddsResponse(sportteryPayload, "2026-06-26");
+  it("parses valid Sporttery HAD quotes for the requested match date", () => {
+    const quotes = parseSportteryOddsResponse(sportteryPayload, "2026-06-27");
 
     expect(quotes).toEqual([
       {
@@ -166,8 +168,8 @@ describe("oddsService", () => {
     ]);
   });
 
-  it("parses valid 500.com fallback odds for the requested owner date", () => {
-    const quotes = parseFallback500OddsResponse(fallback500Payload, "2026-06-26");
+  it("parses valid 500.com fallback odds for the requested match date", () => {
+    const quotes = parseFallback500OddsResponse(fallback500Payload, "2026-06-27");
 
     expect(quotes).toEqual([
       {
@@ -193,7 +195,7 @@ describe("oddsService", () => {
       odds: undefined,
     } as Partial<Match> & { id: string; homeName: string; awayName: string });
 
-    const result = mergeOddsIntoMatches([match], parseSportteryOddsResponse(sportteryPayload, "2026-06-26"));
+    const result = mergeOddsIntoMatches([match], parseSportteryOddsResponse(sportteryPayload, "2026-06-27"));
 
     expect(result.matchedCount).toBe(1);
     expect(result.oddsByMatchId["norway-france"]).toMatchObject({
@@ -208,7 +210,7 @@ describe("oddsService", () => {
   it("matches common World Cup English and Chinese team names", () => {
     const match = makeMatch({ id: "norway-france", homeName: "Norway", awayName: "France", odds: undefined });
 
-    const result = mergeOddsIntoMatches([match], parseSportteryOddsResponse(sportteryPayload, "2026-06-26"));
+    const result = mergeOddsIntoMatches([match], parseSportteryOddsResponse(sportteryPayload, "2026-06-27"));
 
     expect(result.matchedCount).toBe(1);
     expect(result.oddsByMatchId["norway-france"]?.source).toBe("sporttery");
@@ -223,7 +225,7 @@ describe("oddsService", () => {
       odds: undefined,
     } as Partial<Match> & { id: string; homeName: string; awayName: string });
 
-    const result = mergeOddsIntoMatches([match], parseSportteryOddsResponse(sportteryPayload, "2026-06-26"), {
+    const result = mergeOddsIntoMatches([match], parseSportteryOddsResponse(sportteryPayload, "2026-06-27"), {
       "norway-france": {
         homeWin: "9.99",
         draw: "8.88",

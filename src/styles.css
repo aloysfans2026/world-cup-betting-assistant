@@ -238,6 +238,14 @@ button:disabled {
   font-style: normal;
 }
 
+.match-result {
+  margin: 0;
+  color: #172018;
+  font-size: 15px;
+  font-weight: 800;
+  text-align: center;
+}
+
 .odds-pills {
   display: flex;
   flex-wrap: wrap;

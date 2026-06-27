@@ -55,6 +55,8 @@ export interface GetTodayMatchesOptions {
   apiBaseUrl?: string;
   apiKey?: string;
   date?: Date;
+  dateFrom?: string;
+  dateTo?: string;
   fetcher?: typeof fetch;
 }
 
@@ -213,14 +215,14 @@ function apiBaseUrlFor(options: GetTodayMatchesOptions): string {
   return shouldUseAppApi(options) ? APP_API_BASE_URL : FOOTBALL_DATA_API_BASE_URL;
 }
 
-function matchesUrlFor(matchDate: string, apiBaseUrl: string): string {
+function matchesUrlFor(dateFrom: string, dateTo: string, apiBaseUrl: string): string {
   const baseUrl = apiBaseUrl.replace(/\/$/, "");
   const browserOrigin = globalThis.location?.origin ?? "http://localhost";
   const matchesPath = apiBaseUrl.startsWith("/") ? APP_MATCHES_PATH : FOOTBALL_DATA_MATCHES_PATH;
   const url = new URL(`${baseUrl}${matchesPath}`, browserOrigin);
 
-  url.searchParams.set("dateFrom", matchDate);
-  url.searchParams.set("dateTo", matchDate);
+  url.searchParams.set("dateFrom", dateFrom);
+  url.searchParams.set("dateTo", dateTo);
 
   return url.toString();
 }
@@ -251,7 +253,9 @@ export async function getTodayMatches(options: GetTodayMatchesOptions = {}): Pro
   }
 
   const matchDate = formatDate(date);
-  const url = matchesUrlFor(matchDate, apiBaseUrl);
+  const dateFrom = options.dateFrom ?? matchDate;
+  const dateTo = options.dateTo ?? dateFrom;
+  const url = matchesUrlFor(dateFrom, dateTo, apiBaseUrl);
 
   try {
     const response = await fetcher(url, requestOptionsFor(apiBaseUrl, apiKey));
@@ -291,4 +295,8 @@ export async function getTodayMatches(options: GetTodayMatchesOptions = {}): Pro
       detail: "网络错误，已使用本地示例数据。",
     });
   }
+}
+
+export async function getMatchesForDateRange(options: GetTodayMatchesOptions & { dateFrom: string; dateTo: string }) {
+  return getTodayMatches(options);
 }

@@ -21,13 +21,23 @@ function isActionable(item: ScoredMatch): boolean {
   return item.score.direction !== "无推荐";
 }
 
+function recommendationTitle(match: Match, direction: MatchScore["direction"]): string {
+  if (direction === "主胜") return `${match.homeTeam.name}胜`;
+  if (direction === "客胜") return `${match.awayTeam.name}胜`;
+  if (direction === "平") return `${match.homeTeam.name} VS ${match.awayTeam.name} 平局`;
+  if (direction === "让胜") return `${match.homeTeam.name}让球胜`;
+  if (direction === "让平") return `${match.homeTeam.name}让球平`;
+  if (direction === "让负") return `${match.homeTeam.name}让球负`;
+  return "无推荐";
+}
+
 function toRecommendation(item: ScoredMatch, kind: Recommendation["kind"], reason: string): Recommendation {
   return {
     id: `${kind}-${item.match.id}`,
     kind,
     match: item.match,
     score: item.score,
-    title: `${item.match.homeTeam.name}${item.score.direction}`,
+    title: recommendationTitle(item.match, item.score.direction),
     reason,
   };
 }
